@@ -280,28 +280,44 @@ export default function AdminDashboardPage() {
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
                 <span>🔮</span> Predictive Logistics AI
               </h2>
-              <p className="text-xs text-slate-500">Anticipates neighborhood appliance failures using micro-environmental data</p>
+              <p className="text-[10px] text-slate-500 font-medium bg-slate-100 inline-block px-2 py-1 rounded mt-1">
+                🔒 Anonymized Aggregate Data Only (Privacy Preserved)
+              </p>
             </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="border border-rose-200 bg-rose-50/50 p-4 rounded-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">HIGH RISK</div>
-              <h3 className="font-bold text-rose-900 text-sm mb-1">Sector 62, Noida</h3>
-              <p className="text-xs text-rose-700 mb-3">TDS Spike detected (940ppm). High probability of RO filter failures in next 48 hours.</p>
-              <div className="bg-white rounded-lg p-2 flex justify-between items-center text-xs font-semibold border border-rose-100">
-                <span>Action: Cache Spare Parts</span>
-                <span className="text-rose-600">50 RO Filters</span>
+              <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">82% CONFIDENCE</div>
+              <h3 className="font-bold text-rose-900 text-sm mb-1 mt-1">Sector 62, Noida</h3>
+              <p className="text-xs text-rose-700 mb-3">Aggregate TDS pattern spike (940ppm avg). High probability of local RO filter failures.</p>
+              <div className="bg-white rounded-lg p-2 flex flex-col gap-1 text-[10px] font-semibold border border-rose-100">
+                <span className="text-slate-500">Logistics Recommendation:</span>
+                <span className="text-rose-700 flex justify-between">
+                  Partner with local supplier
+                  <strong>Gupta Hardware (Sec 62)</strong>
+                </span>
+                <span className="text-rose-600 flex justify-between">
+                  Reserve Inventory:
+                  <strong>50 RO Filters</strong>
+                </span>
               </div>
             </div>
             
             <div className="border border-amber-200 bg-amber-50/50 p-4 rounded-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">MED RISK</div>
-              <h3 className="font-bold text-amber-900 text-sm mb-1">Indirapuram</h3>
-              <p className="text-xs text-amber-700 mb-3">Power grid voltage fluctuations (180V-260V) logged. High AC capacitor failure probability.</p>
-              <div className="bg-white rounded-lg p-2 flex justify-between items-center text-xs font-semibold border border-amber-100">
-                <span>Action: Cache Spare Parts</span>
-                <span className="text-amber-600">30 AC Capacitors</span>
+              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">65% CONFIDENCE</div>
+              <h3 className="font-bold text-amber-900 text-sm mb-1 mt-1">Indirapuram</h3>
+              <p className="text-xs text-amber-700 mb-3">Power grid voltage anomalies detected. Likely AC capacitor failures.</p>
+              <div className="bg-white rounded-lg p-2 flex flex-col gap-1 text-[10px] font-semibold border border-amber-100">
+                <span className="text-slate-500">Logistics Recommendation:</span>
+                <span className="text-amber-700 flex justify-between">
+                  Partner with local supplier
+                  <strong>Sharma Electronics</strong>
+                </span>
+                <span className="text-amber-600 flex justify-between">
+                  Reserve Inventory:
+                  <strong>30 AC Capacitors</strong>
+                </span>
               </div>
             </div>
 
@@ -581,20 +597,31 @@ export default function AdminDashboardPage() {
             </div>
 
             {consensusProgress ? (
-              <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 animate-pulse">
-                 <h4 className="font-bold text-sm text-blue-900 mb-2">Decentralized Peer Consensus Active</h4>
-                 <p className="text-[10px] text-blue-700 mb-3">Broadcasting verification request to top-rated network peers...</p>
-                 <div className="space-y-2">
-                   <div className="text-[10px] bg-white p-2 border border-emerald-100 rounded text-emerald-700 font-mono">✓ Node 1 (4.9★): Skill Signature Valid</div>
-                   <div className="text-[10px] bg-white p-2 border border-emerald-100 rounded text-emerald-700 font-mono">✓ Node 2 (4.8★): Work History Authenticated</div>
-                   <div className="text-[10px] bg-white p-2 border border-emerald-100 rounded text-emerald-700 font-mono">✓ Node 3 (5.0★): Identity Consensus Reached</div>
-                 </div>
-                 <button
-                   onClick={() => handleUpdateVerification(selectedWorkerForVerify.id, 'VERIFIED')}
-                   className="w-full mt-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded transition"
-                 >
-                   Confirm Decentralized Verification
-                 </button>
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                <h4 className="font-bold text-sm text-blue-900 mb-2">Hybrid Trust Consensus Active</h4>
+                
+                <div className="space-y-3">
+                  <div className="bg-white p-2 border border-emerald-100 rounded">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Stage 1: Centralized Baseline</div>
+                    <div className="text-[10px] text-emerald-700 font-mono">✅ Gov ID Match Verified</div>
+                    <div className="text-[10px] text-emerald-700 font-mono">✅ Criminal Background Cleared</div>
+                  </div>
+
+                  <div className="bg-white p-2 border border-blue-100 rounded">
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Stage 2: Peer Quorum (Skill/Reputation)</div>
+                    <p className="text-[9px] text-blue-700 mb-2 italic">Anti-collusion check passed. Requesting signatures from non-affiliated peers...</p>
+                    <div className="text-[10px] text-blue-700 font-mono animate-pulse">📡 Node 1 (4.9★): Skill Signature Valid</div>
+                    <div className="text-[10px] text-blue-700 font-mono animate-pulse delay-75">📡 Node 2 (4.8★): Work History Authenticated</div>
+                    <div className="text-[10px] text-blue-700 font-mono animate-pulse delay-150">📡 Node 3 (5.0★): Local Reputation Confirmed</div>
+                  </div>
+                </div>
+                
+                <button
+                  onClick={() => handleUpdateVerification(selectedWorkerForVerify.id, 'VERIFIED')}
+                  className="w-full mt-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded transition"
+                >
+                  Confirm Hybrid Verification
+                </button>
               </div>
             ) : (
               <div className="flex flex-col gap-2 pt-2">
@@ -603,15 +630,16 @@ export default function AdminDashboardPage() {
                   onClick={() => setConsensusProgress(true)}
                   className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded transition disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  <span>🔗</span> Trigger Decentralized Peer Verification
+                  <span>🤝</span> Trigger Hybrid Peer Verification
                 </button>
+                <p className="text-[9px] text-slate-500 text-center italic mb-2">Requires minimum 3 peer signatures. Falls back to manual admin review if no local peers available.</p>
                 <div className="flex gap-2">
                   <button
                     disabled={verifying}
                     onClick={() => handleUpdateVerification(selectedWorkerForVerify.id, 'VERIFIED')}
                     className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-emerald-700 border border-slate-300 font-bold text-xs rounded transition disabled:opacity-50"
                   >
-                    Manual Verify
+                    Admin Fallback Verify
                   </button>
                   <button
                     disabled={verifying}

@@ -137,6 +137,7 @@ def calculate_bio_economic_metrics(worker: Worker) -> dict:
     """
     Novel Patent Feature: Bio-Economic Fatigue Routing Algorithm
     Calculates physical strain and income parity.
+    Includes a safety floor: if fatigue is too high, the worker is blocked.
     """
     jobs = worker.total_jobs or 0
     
@@ -144,19 +145,22 @@ def calculate_bio_economic_metrics(worker: Worker) -> dict:
     # Higher index = more exhausted
     fatigue_index = min(100.0, jobs * 3.5)
     
+    # Safety Floor Hard Cap (8/10 or 80.0)
+    is_fatigued = fatigue_index >= 80.0
+    
     # Economic Deficit: How far is the worker from the cooperative's target weekly parity income?
-    # Higher deficit = Needs more jobs urgently to survive
     target_income = 5000 
     actual_income = jobs * 500
     economic_deficit = max(0.0, min(100.0, ((target_income - actual_income) / target_income) * 100))
     
     # Bio-Economic Score: High deficit boosts score, High fatigue reduces score
-    bio_economic_score = max(10.0, 100.0 - fatigue_index + economic_deficit)
+    bio_economic_score = max(10.0, 100.0 - fatigue_index + economic_deficit) if not is_fatigued else 0.0
     
     return {
         "fatigue_index": round(fatigue_index, 1),
         "economic_deficit": round(economic_deficit, 1),
-        "bio_economic_score": min(100.0, round(bio_economic_score, 1))
+        "bio_economic_score": min(100.0, round(bio_economic_score, 1)),
+        "is_fatigued": is_fatigued
     }
 
 

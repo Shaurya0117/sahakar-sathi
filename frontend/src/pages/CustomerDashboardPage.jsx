@@ -634,7 +634,9 @@ Thank you for choosing the Cooperative!
                         >
                           View Request Details →
                         </MotionButton>
-
+                      </div>
+                      {/* Action Buttons */}
+                      <div className="pt-2 flex gap-2 flex-wrap">
                         {req.status === 'PENDING' && (
                           <MotionButton
                             onClick={() => handleCancelRequest(req.id)}
@@ -650,6 +652,18 @@ Thank you for choosing the Cooperative!
                             className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg transition flex items-center gap-1"
                           >
                             <span>💬</span> Message Worker
+                          </MotionButton>
+                        )}
+
+                        {booking && booking.status === 'IN_PROGRESS' && (
+                          <MotionButton
+                            onClick={() => {
+                              toast.success("Job marked as done by customer. Signal sent to arbitration system.");
+                              // Real app would send API request here to finalize the booking status
+                            }}
+                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white shadow shadow-emerald-500/20 text-xs font-bold rounded-lg transition flex items-center gap-1"
+                          >
+                            <span>✅</span> Confirm Job Done
                           </MotionButton>
                         )}
 

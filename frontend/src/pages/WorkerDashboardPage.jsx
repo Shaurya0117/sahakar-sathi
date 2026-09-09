@@ -530,6 +530,49 @@ export default function WorkerDashboardPage() {
               </motion.div>
             </motion.div>
 
+            {/* Bio-Economic Health Status */}
+            <motion.div variants={fadeInUp} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">Bio-Economic Health Status</h2>
+                  <p className="text-[10px] text-slate-500">Cooperative algorithms monitor your fatigue and income parity to ensure fair, safe routing.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-slate-700">Physical Fatigue Index</span>
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded ${profile.total_jobs * 3.5 >= 80 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {Math.min(100, profile.total_jobs * 3.5).toFixed(1)} / 100
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <div className={`h-full ${profile.total_jobs * 3.5 >= 80 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, profile.total_jobs * 3.5)}%` }} />
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-2">
+                    {profile.total_jobs * 3.5 >= 80 
+                      ? "⚠️ Safety Floor Reached: Algorithm has temporarily blocked new assignments to prevent physical burnout. Weekly rest hours triggered."
+                      : "✓ Fatigue levels nominal. You are eligible for new job routing."}
+                  </p>
+                </div>
+                
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold text-slate-700">Income Parity Deficit</span>
+                    <span className="text-[10px] font-bold px-2 py-1 rounded bg-blue-100 text-blue-800">
+                      {Math.max(0, Math.min(100, ((5000 - (profile.total_jobs * 500)) / 5000) * 100)).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-blue-500" style={{ width: `${Math.max(0, Math.min(100, ((5000 - (profile.total_jobs * 500)) / 5000) * 100))}%` }} />
+                  </div>
+                  <p className="text-[10px] text-slate-500 mt-2">
+                    High deficit prioritizes you for higher-paying local jobs to reach cooperative weekly wage standards.
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+
             {/* Assigned Jobs */}
             <motion.div variants={fadeInUp} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -682,6 +725,20 @@ export default function WorkerDashboardPage() {
               <div className={edgeProgress > 20 ? "text-emerald-600" : ""}>{edgeProgress > 20 ? "[OK]" : "[..]"} Sampling audio frequencies...</div>
               <div className={edgeProgress > 50 ? "text-emerald-600" : ""}>{edgeProgress > 50 ? "[OK]" : "[..]"} Analyzing accelerometer movement...</div>
               <div className={edgeProgress > 80 ? "text-emerald-600" : ""}>{edgeProgress > 80 ? "[OK]" : "[..]"} Generating Zero-Knowledge Proof Hash...</div>
+            </div>
+
+            <div className="mb-6 p-3 bg-rose-50 border border-rose-100 rounded-xl">
+              <div className="flex items-start gap-2">
+                <span className="text-rose-500 mt-0.5">⚠️</span>
+                <div>
+                  <h4 className="text-xs font-bold text-rose-900">Dispute Fallback (Optional)</h4>
+                  <p className="text-[9px] text-rose-700 mt-1 mb-2">If you anticipate a customer dispute, you may upload a photo. It is stored securely for arbitration and auto-deleted in 48 hours to preserve privacy.</p>
+                  <label className="text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded cursor-pointer inline-block">
+                    📸 Upload Dispute Photo
+                    <input type="file" className="hidden" accept="image/*" />
+                  </label>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-2">

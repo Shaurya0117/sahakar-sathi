@@ -74,6 +74,10 @@ def get_matching_recommendations(
         experience_score = calculate_experience_score(worker)
         bio_metrics = calculate_bio_economic_metrics(worker)
 
+        if bio_metrics.get("is_fatigued"):
+            # Exclude worker from recommendations due to safety floor
+            continue
+
         breakdown_dict = {
             "skill_match": skill_score,
             "location": location_score,
