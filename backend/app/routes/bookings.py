@@ -3,7 +3,7 @@ FastAPI route handlers for Worker Allocation and Booking Lifecycle.
 """
 from typing import List
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Body
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user, require_admin, require_customer, require_worker
@@ -145,7 +145,7 @@ def start_job(
 )
 def complete_job(
     id: int,
-    payload: Optional[CompleteBookingRequest] = None,
+    payload: Optional[CompleteBookingRequest] = Body(None),
     db: Session = Depends(get_db),
     worker_user: User = Depends(require_worker),
 ):
