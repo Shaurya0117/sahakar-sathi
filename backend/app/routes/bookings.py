@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.auth.dependencies import get_current_user, require_admin, require_customer, require_worker
 from app.database.session import get_db
 from app.models.user import User
-from app.schemas.booking import AllocateWorkerRequest, BookingResponse
+from app.schemas.booking import AllocateWorkerRequest, BookingResponse, CompleteBookingRequest
 from app.services.booking import (
     accept_booking,
     allocate_worker_to_request,
@@ -145,10 +145,11 @@ def start_job(
 )
 def complete_job(
     id: int,
+    payload: Optional[CompleteBookingRequest] = None,
     db: Session = Depends(get_db),
     worker_user: User = Depends(require_worker),
 ):
-    return complete_booking(db, id, worker_user)
+    return complete_booking(db, id, worker_user, payload)
 
 from app.schemas.booking import ReviewCreateRequest
 from app.services.booking import submit_booking_review

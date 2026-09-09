@@ -93,7 +93,7 @@ export default function RecommendationCard({ rank, recommendation, onAllocate, a
       <div className="mb-4">
         <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
           <span>Why this worker is recommended:</span>
-          <span className="text-[10px] font-normal text-slate-500 italic">Recommended based on service skills, location, availability, experience and current workload</span>
+          <span className="text-[10px] font-normal text-slate-500 italic">Recommended based on service skills, location, availability, experience and bio-economic fatigue metrics</span>
         </h5>
         <ul className="space-y-1 text-xs text-slate-600">
           {reasons && reasons.length > 0 ? (

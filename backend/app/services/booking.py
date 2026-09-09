@@ -66,6 +66,9 @@ def build_booking_response(db: Session, booking: Booking) -> BookingResponse:
         amount=booking.amount,
         customer_rating=booking.customer_rating,
         customer_review=booking.customer_review,
+        proof_of_work_hash=booking.proof_of_work_hash,
+        privacy_score=booking.privacy_score,
+        payment_status=booking.payment_status or "PENDING",
         assigned_by_name=assigner.name if assigner else "Cooperative Admin",
         created_at=booking.created_at,
         updated_at=booking.updated_at,
@@ -313,10 +316,13 @@ def start_booking(db: Session, booking_id: int, worker_user: User) -> BookingRes
     return build_booking_response(db, booking)
 
 
-def complete_booking(db: Session, booking_id: int, worker_user: User) -> BookingResponse:
+from app.schemas.booking import CompleteBookingRequest
+
+def complete_booking(db: Session, booking_id: int, worker_user: User, payload: Optional[CompleteBookingRequest] = None) -> BookingResponse:
     """
     Worker marks service completed (IN_PROGRESS -> COMPLETED).
     Updates Booking & ServiceRequest to COMPLETED, and atomically increments worker.total_jobs.
+    Now supports Privacy-Preserving Proof of Work (Edge AI).
     """
     worker = db.query(Worker).filter(Worker.user_id == worker_user.id).first()
     if not worker:
@@ -336,6 +342,10 @@ def complete_booking(db: Session, booking_id: int, worker_user: User) -> Booking
         )
 
     booking.status = BookingStatus.COMPLETED
+    
+    if payload:
+        booking.proof_of_work_hash = payload.proof_of_work_hash
+        booking.privacy_score = payload.privacy_score
 
     # Update ServiceRequest to COMPLETED
     req = db.query(ServiceRequest).filter(ServiceRequest.id == booking.request_id).first()

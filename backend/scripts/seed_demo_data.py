@@ -2,7 +2,7 @@
 Demo Data Seeder for Cooperative Gig Services Platform.
 
 Seeds:
-1. Admin user (admin@coopserve.demo / Admin@1234)
+1. Admin user (admin@sahakarsathi.demo / Admin@1234)
 2. Primary Cooperative ("Ghaziabad Community Services Cooperative")
 3. Service Catalog items (Plumbing, Electrical, Cleaning, Carpentry, Painting, AC Servicing)
 4. 7 realistic demo workers with diverse professions, experience, availability, ratings, and verification statuses.
@@ -25,13 +25,13 @@ from app.services.cooperative import ensure_demo_cooperative
 from app.services.service_catalog import ensure_seed_services
 
 ADMIN_NAME = os.environ.get("ADMIN_NAME", "Cooperative Admin")
-ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@coopserve.demo")
+ADMIN_EMAIL = os.environ.get("ADMIN_EMAIL", "admin@sahakarsathi.demo")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "Admin@1234")
 
 DEMO_WORKERS = [
     {
         "name": "Rahul Kumar",
-        "email": "rahul.electrician@coopserve.demo",
+        "email": "rahul.electrician@sahakarsathi.demo",
         "phone": "+91 98765 43210",
         "profession": "Electrician",
         "experience_years": 5,
@@ -45,7 +45,7 @@ DEMO_WORKERS = [
     },
     {
         "name": "Amit Verma",
-        "email": "amit.electrician@coopserve.demo",
+        "email": "amit.electrician@sahakarsathi.demo",
         "phone": "+91 97111 22334",
         "profession": "Electrician",
         "experience_years": 2,
@@ -59,7 +59,7 @@ DEMO_WORKERS = [
     },
     {
         "name": "Vikas Singh",
-        "email": "vikas.electrician@coopserve.demo",
+        "email": "vikas.electrician@sahakarsathi.demo",
         "phone": "+91 96555 44332",
         "profession": "Electrician",
         "experience_years": 7,
@@ -73,7 +73,7 @@ DEMO_WORKERS = [
     },
     {
         "name": "Sunita Devi",
-        "email": "sunita.cleaning@coopserve.demo",
+        "email": "sunita.cleaning@sahakarsathi.demo",
         "phone": "+91 98123 45678",
         "profession": "Cleaner",
         "experience_years": 4,
@@ -87,7 +87,7 @@ DEMO_WORKERS = [
     },
     {
         "name": "Suresh Pal",
-        "email": "suresh.plumber@coopserve.demo",
+        "email": "suresh.plumber@sahakarsathi.demo",
         "phone": "+91 95444 33221",
         "profession": "Plumber",
         "experience_years": 6,
@@ -101,7 +101,7 @@ DEMO_WORKERS = [
     },
     {
         "name": "Ramesh Gupta",
-        "email": "ramesh.painter@coopserve.demo",
+        "email": "ramesh.painter@sahakarsathi.demo",
         "phone": "+91 94333 22110",
         "profession": "Painter",
         "experience_years": 10,
@@ -115,7 +115,7 @@ DEMO_WORKERS = [
     },
     {
         "name": "Mohd. Salim",
-        "email": "salim.ac@coopserve.demo",
+        "email": "salim.ac@sahakarsathi.demo",
         "phone": "+91 93222 11009",
         "profession": "AC Technician",
         "experience_years": 6,
@@ -197,11 +197,11 @@ def seed_demo_data():
         print(f"[OK] Demo Workers processed ({created_workers} new workers created)")
 
         # 5. Seed Demo Customers & Sample Service Requests
-        c1 = get_user_by_email(db, "asha.customer@coopserve.demo")
+        c1 = get_user_by_email(db, "asha.customer@sahakarsathi.demo")
         if not c1:
             c1 = User(
                 name="Asha Sharma",
-                email="asha.customer@coopserve.demo",
+                email="asha.customer@sahakarsathi.demo",
                 phone="+91 98765 00000",
                 password_hash=hash_password("Customer@1234"),
                 role=UserRole.CUSTOMER,
@@ -211,11 +211,11 @@ def seed_demo_data():
             db.commit()
             db.refresh(c1)
 
-        c2 = get_user_by_email(db, "rohit.customer@coopserve.demo")
+        c2 = get_user_by_email(db, "rohit.customer@sahakarsathi.demo")
         if not c2:
             c2 = User(
                 name="Rohit Verma",
-                email="rohit.customer@coopserve.demo",
+                email="rohit.customer@sahakarsathi.demo",
                 phone="+91 98765 11111",
                 password_hash=hash_password("Customer@1234"),
                 role=UserRole.CUSTOMER,
@@ -260,7 +260,7 @@ def seed_demo_data():
         print(f"  Cooperative   : {coop.name}")
         print(f"  Admin Email   : {ADMIN_EMAIL}")
         print(f"  Admin Pass    : {ADMIN_PASSWORD}")
-        print(f"  Customer Email: asha.customer@coopserve.demo")
+        print(f"  Customer Email: asha.customer@sahakarsathi.demo")
         print(f"  Customer Pass : Customer@1234")
         print(f"  Worker Pass   : Worker@1234 (for all demo worker accounts)")
         print("-" * 60)

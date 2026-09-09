@@ -19,6 +19,12 @@ class ReviewCreateRequest(BaseModel):
     review: Optional[str] = Field(None, max_length=1000, description="Optional written review")
 
 
+class CompleteBookingRequest(BaseModel):
+    """Payload sent by Worker to complete a job, optionally providing Edge AI Proof of Work."""
+    proof_of_work_hash: Optional[str] = Field(None, description="Edge AI generated sensor fusion hash")
+    privacy_score: Optional[float] = Field(None, description="Privacy preservation score (0-100)")
+
+
 class BookingResponse(BaseModel):
     """Response representation of a Booking."""
 
@@ -40,6 +46,9 @@ class BookingResponse(BaseModel):
     image_url: Optional[str] = None
     customer_rating: Optional[int] = None
     customer_review: Optional[str] = None
+    proof_of_work_hash: Optional[str] = None
+    privacy_score: Optional[float] = None
+    payment_status: str = "PENDING"
     assigned_by_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime

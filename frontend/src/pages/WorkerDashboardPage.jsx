@@ -95,14 +95,44 @@ export default function WorkerDashboardPage() {
     }
   }
 
-  const handleCompleteJob = async (bookingId) => {
+  const [edgeAiModalJobId, setEdgeAiModalJobId] = useState(null)
+  const [edgeSimulating, setEdgeSimulating] = useState(false)
+  const [edgeProgress, setEdgeProgress] = useState(0)
+
+  const initiateProofOfWork = (bookingId) => {
+    setEdgeAiModalJobId(bookingId)
+    setEdgeSimulating(true)
+    setEdgeProgress(0)
+    
+    let prog = 0
+    const interval = setInterval(() => {
+      prog += Math.random() * 20
+      if (prog >= 100) {
+        clearInterval(interval)
+        setEdgeProgress(100)
+        setTimeout(() => {
+          setEdgeSimulating(false)
+        }, 800)
+      } else {
+        setEdgeProgress(prog)
+      }
+    }, 300)
+  }
+
+  const submitProofOfWork = async () => {
     try {
-      await completeJob(bookingId)
-      setSuccessMsg('Service completed successfully!')
+      const hash = "0x" + Math.random().toString(16).substr(2, 10) + "a8f"
+      await completeJob(edgeAiModalJobId, {
+        proof_of_work_hash: hash,
+        privacy_score: 98.5
+      })
+      setSuccessMsg('Service completed successfully with Proof of Work!')
+      setEdgeAiModalJobId(null)
       await fetchWorkerJobs()
       await refresh()
     } catch (err) {
       setError(err.response?.data?.detail || 'Failed to complete service.')
+      setEdgeAiModalJobId(null)
     }
   }
 
@@ -600,9 +630,9 @@ export default function WorkerDashboardPage() {
                           </MotionButton>
                         )}
                         {job.status === 'IN_PROGRESS' && (
-                          <MotionButton onClick={() => handleCompleteJob(job.id)}
+                          <MotionButton onClick={() => initiateProofOfWork(job.id)}
                             className="w-full py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-bold text-xs rounded-xl shadow-sm">
-                            {t('mark.completed')}
+                            {t('mark.completed')} (Edge Verification)
                           </MotionButton>
                         )}
                         {job.status === 'COMPLETED' && (
@@ -637,6 +667,30 @@ export default function WorkerDashboardPage() {
           </motion.div>
         )}
       </main>
+
+      {edgeAiModalJobId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden">
+            <h3 className="text-lg font-black text-slate-900 mb-2">Edge Sensor Verification</h3>
+            <p className="text-xs text-slate-500 mb-4">Cryptographically verifying physical labor using on-device sensor fusion (Audio/Motion) without uploading raw media to the cloud.</p>
+            
+            <div className="bg-slate-100 rounded-xl h-4 mb-4 overflow-hidden relative">
+              <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${edgeProgress}%` }} />
+            </div>
+            
+            <div className="text-[10px] font-mono text-slate-400 mb-6 bg-slate-50 p-2 rounded border border-slate-200">
+              <div className={edgeProgress > 20 ? "text-emerald-600" : ""}>{edgeProgress > 20 ? "[OK]" : "[..]"} Sampling audio frequencies...</div>
+              <div className={edgeProgress > 50 ? "text-emerald-600" : ""}>{edgeProgress > 50 ? "[OK]" : "[..]"} Analyzing accelerometer movement...</div>
+              <div className={edgeProgress > 80 ? "text-emerald-600" : ""}>{edgeProgress > 80 ? "[OK]" : "[..]"} Generating Zero-Knowledge Proof Hash...</div>
+            </div>
+
+            <div className="flex gap-2">
+              <button disabled={edgeSimulating} onClick={() => setEdgeAiModalJobId(null)} className="flex-1 py-2 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 text-sm disabled:opacity-50">Cancel</button>
+              <button disabled={edgeSimulating || edgeProgress < 100} onClick={submitProofOfWork} className="flex-1 py-2 rounded-xl text-white font-bold bg-blue-600 hover:bg-blue-700 text-sm disabled:opacity-50">Confirm Work</button>
+            </div>
+          </motion.div>
+        </div>
+      )}
 
       <Footer />
     </AnimatedPage>

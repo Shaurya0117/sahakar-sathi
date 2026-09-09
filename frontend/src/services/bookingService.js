@@ -55,7 +55,7 @@ export const startJob = (bookingId) => api.patch(`/bookings/${bookingId}/start`)
  * Worker marks a service completed.
  * @param {number} bookingId
  */
-export const completeJob = (bookingId) => api.patch(`/bookings/${bookingId}/complete`)
+export const completeJob = (bookingId, payload = null) => api.patch(`/bookings/${bookingId}/complete`, payload)
 
 /**
  * Customer reviews a completed job.

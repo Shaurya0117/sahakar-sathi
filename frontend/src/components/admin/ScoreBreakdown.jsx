@@ -10,7 +10,7 @@ const SCORE_LABELS = [
   { key: 'availability', label: 'Availability', color: 'bg-indigo-500' },
   { key: 'rating', label: 'Rating', color: 'bg-amber-500' },
   { key: 'experience', label: 'Experience', color: 'bg-purple-500' },
-  { key: 'workload_fairness', label: 'Fairness', color: 'bg-teal-500' },
+  { key: 'bio_economic_score', label: 'Bio-Economic', color: 'bg-teal-500' },
 ]
 
 export default function ScoreBreakdown({ breakdown }) {
