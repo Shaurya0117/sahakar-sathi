@@ -64,7 +64,11 @@ class Worker(Base):
     user_id: int         = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
 
     # Optional cooperative membership (linked to primary demo cooperative)
-    cooperative_id: Optional[int] = Column(Integer, ForeignKey("cooperatives.id", ondelete="SET NULL"), nullable=True)
+    cooperative_id = Column(Integer, ForeignKey("cooperatives.id"), nullable=False)
+    
+    # Novel Patent Feature: Decentralized Peer-to-Peer Verification
+    peer_consensus_score = Column(Float, default=0.0)
+    verification_hash = Column(String(255), nullable=True)
 
     # Professional information
     profession: Optional[str]  = Column(String(128), nullable=True)
