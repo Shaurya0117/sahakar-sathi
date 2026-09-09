@@ -22,7 +22,7 @@ app = FastAPI(
     title="Cooperative Gig Services Platform",
     description=(
         "A cooperative-owned digital marketplace for household and community "
-        "services. Built for SIH 2026."
+        "services. Developed as an academic Mini Project."
     ),
     version="0.1.0",
     docs_url="/docs",
