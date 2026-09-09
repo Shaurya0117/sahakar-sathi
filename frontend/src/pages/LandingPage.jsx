@@ -78,7 +78,7 @@ export default function LandingPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5, duration: 0.6 }}
             >
-              CoopServe connects households with verified, background-checked community workers. Enjoy fair pricing and transparent allocation.
+              Sahakar Sathi connects households with verified, background-checked community workers. Enjoy fair pricing and transparent allocation.
             </motion.p>
           </div>
 
@@ -158,7 +158,7 @@ export default function LandingPage() {
             <ScrollReveal direction="down" className="text-center max-w-2xl mx-auto space-y-3 mb-10">
               <h2 className="text-3xl font-extrabold text-white">3 Ways to Book a Service</h2>
               <p className="text-sm text-blue-200">
-                CoopServe supports three convenient channels for booking household & community service workers. All requests are processed through our central cooperative system.
+                Sahakar Sathi supports three convenient channels for booking household & community service workers. All requests are processed through our central cooperative system.
               </p>
             </ScrollReveal>
 

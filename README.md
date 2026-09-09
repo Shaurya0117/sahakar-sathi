@@ -1,8 +1,8 @@
-# CoopServe — Cooperative Community Services Platform
+# Sahakar Sathi — Cooperative Community Services Platform
 
-**CoopServe** is a cooperative-owned digital portal that connects households and community members with verified local service workers.
+**Sahakar Sathi** is a cooperative-owned digital portal that connects households and community members with verified local service workers.
 
-Designed in the spirit of official public service portals (such as *Seva Mitra*), CoopServe ensures transparent service delivery, worker credential verification, and equitable work distribution across member workers.
+Designed in the spirit of official public service portals (such as *Seva Mitra*), Sahakar Sathi ensures transparent service delivery, worker credential verification, and equitable work distribution across member workers.
 
 ---
 
@@ -20,7 +20,7 @@ Designed in the spirit of official public service portals (such as *Seva Mitra*)
 
 ## Service Request Channels (Web, WhatsApp, Phone)
 
-CoopServe provides 3 access channels feeding into a single, unified backend workflow:
+Sahakar Sathi provides 3 access channels feeding into a single, unified backend workflow:
 
 | Channel | Interface | How It Works | Status |
 | :--- | :--- | :--- | :--- |
@@ -35,7 +35,7 @@ WhatsApp Message / Location Drop
   ↓
 Telnyx WhatsApp Gateway (v2 REST API)
   ↓
-CoopServe Webhook (`POST /api/channels/whatsapp/webhook`)
+Sahakar Sathi Webhook (`POST /api/channels/whatsapp/webhook`)
   ↓
 Payload Parser & Security Signature Verification
   ↓
@@ -90,9 +90,9 @@ TWILIO_VOICE_NUMBER=+14155238886
 
 3. **Real WhatsApp User Booking Test:**
    - Send a WhatsApp message `"Hi"` from a registered customer phone number (e.g., Asha Sharma `+91 98765 00000`) to your Telnyx WhatsApp Number (`+1 800 123 4567`).
-   - CoopServe will reply back on WhatsApp with the active service catalog menu.
+   - Sahakar Sathi will reply back on WhatsApp with the active service catalog menu.
    - Reply `"1"` (Plumbing), send problem description, location (or drop GPS location), preferred date, time, and confirm with `"1"`.
-   - A `ServiceRequest` is automatically created in the database and appears on the CoopServe Admin Dashboard for worker allocation.
+   - A `ServiceRequest` is automatically created in the database and appears on the Sahakar Sathi Admin Dashboard for worker allocation.
 
 ---
 
@@ -110,9 +110,9 @@ TWILIO_VOICE_NUMBER=+14155238886
 
 | Role | Demo Email / Phone | Password |
 | :--- | :--- | :--- |
-| **Cooperative Admin** | `admin@coopserve.demo` | `Admin@1234` |
-| **Customer (Asha Sharma)** | `asha.customer@coopserve.demo` (`+91 98765 00000`) | `Customer@1234` |
-| **Worker (Rahul Kumar)** | `rahul.electrician@coopserve.demo` (`+91 98765 43210`) | `Worker@1234` |
+| **Cooperative Admin** | `admin@sahakarsathi.demo` | `Admin@1234` |
+| **Customer (Asha Sharma)** | `asha.customer@sahakarsathi.demo` (`+91 98765 00000`) | `Customer@1234` |
+| **Worker (Rahul Kumar)** | `rahul.electrician@sahakarsathi.demo` (`+91 98765 43210`) | `Worker@1234` |
 
 ---
 
@@ -144,7 +144,7 @@ TWILIO_VOICE_NUMBER=+14155238886
 
 ## Cooperative Governance & Workload Fairness
 
-CoopServe prioritizes equitable work distribution among qualified member workers. The recommendation engine evaluates:
+Sahakar Sathi prioritizes equitable work distribution among qualified member workers. The recommendation engine evaluates:
 - **Skill Match (30%)**: Domain relevance and specialized skill qualification.
 - **Geographic Proximity (20%)**: Haversine distance brackets (0–2 km = 100, 2–5 km = 90, 5–10 km = 75, 10–20 km = 55, 20+ km = 30) or locality string matching.
 - **Availability (20%)**: Active availability declaration.

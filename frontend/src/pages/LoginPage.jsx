@@ -49,9 +49,9 @@ export default function LoginPage() {
   }
 
   const demoAccounts = [
-    { label: 'Customer', sub: 'Asha Sharma', email: 'asha.customer@coopserve.demo', password: 'Customer@1234', color: 'bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200', icon: '🛒' },
-    { label: 'Admin', sub: 'Coop Admin', email: 'admin@coopserve.demo', password: 'Admin@1234', color: 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300', icon: '🛡️' },
-    { label: 'Worker', sub: 'Rahul Kumar', email: 'rahul.electrician@coopserve.demo', password: 'Worker@1234', color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200', icon: '🛠️' },
+    { label: 'Customer', sub: 'Asha Sharma', email: 'asha.customer@sahakarsathi.demo', password: 'Customer@1234', color: 'bg-blue-50 hover:bg-blue-100 text-blue-800 border-blue-200', icon: '🛒' },
+    { label: 'Admin', sub: 'Coop Admin', email: 'admin@sahakarsathi.demo', password: 'Admin@1234', color: 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300', icon: '🛡️' },
+    { label: 'Worker', sub: 'Rahul Kumar', email: 'rahul.electrician@sahakarsathi.demo', password: 'Worker@1234', color: 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200', icon: '🛠️' },
   ]
 
   return (

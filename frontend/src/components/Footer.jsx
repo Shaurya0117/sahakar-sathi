@@ -38,7 +38,7 @@ export default function Footer() {
                   🤝
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-white text-lg tracking-tight">CoopServe</h3>
+                  <h3 className="font-extrabold text-white text-lg tracking-tight">Sahakar Sathi</h3>
                   <p className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold">Cooperative Portal</p>
                 </div>
               </div>
@@ -67,7 +67,7 @@ export default function Footer() {
                   📞
                 </motion.a>
                 <motion.a
-                  href="mailto:support@coopserve.in"
+                  href="mailto:support@sahakarsathi.in"
                   className="w-9 h-9 rounded-lg bg-slate-800 hover:bg-indigo-600 text-slate-400 hover:text-white flex items-center justify-center text-lg transition-colors border border-slate-700 hover:border-indigo-500"
                   whileHover={{ scale: 1.1, y: -2 }}
                   whileTap={{ scale: 0.95 }}
@@ -125,7 +125,7 @@ export default function Footer() {
           <div className="flex items-center gap-4 text-[11px] text-slate-500">
             <span>Helpline: 1800-266-7737</span>
             <span className="w-1 h-1 rounded-full bg-slate-700" />
-            <span>support@coopserve.in</span>
+            <span>support@sahakarsathi.in</span>
           </div>
         </div>
       </div>

@@ -963,7 +963,7 @@ Thank you for choosing the Cooperative!
               <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <motion.div className="text-2xl" animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity }}>🤖</motion.div>
-                  <div><div className="font-bold text-sm leading-tight">CoopServe AI</div><div className="text-[10px] text-blue-200">Smart Booking Assistant</div></div>
+                  <div><div className="font-bold text-sm leading-tight">Sahakar Sathi AI</div><div className="text-[10px] text-blue-200">Smart Booking Assistant</div></div>
                 </div>
                 <MotionButton variant="icon" onClick={() => setAiChatOpen(false)} className="text-blue-200 hover:text-white">✕</MotionButton>
               </div>
@@ -1017,7 +1017,7 @@ Thank you for choosing the Cooperative!
       </div>
 
       {/* ── Floating WhatsApp Widget ──────────────────────────────────── */}
-      <FloatingWhatsAppWidget phoneNumber="919999999999" companyName="CoopServe Support" />
+      <FloatingWhatsAppWidget phoneNumber="919999999999" companyName="Sahakar Sathi Support" />
     </AnimatedPage>
   )
 }

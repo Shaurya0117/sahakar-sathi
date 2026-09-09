@@ -36,7 +36,7 @@ export default function PortalHeader() {
           </motion.div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-xl tracking-tight text-slate-900">CoopServe</span>
+              <span className="font-extrabold text-xl tracking-tight text-slate-900">Sahakar Sathi</span>
               <span className="text-[10px] font-semibold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-300">
                 Cooperative Portal
               </span>
@@ -73,7 +73,7 @@ export default function PortalHeader() {
             whileTap={{ y: 1 }}
             onClick={() => {
               import('react-hot-toast').then(({ default: toast }) => {
-                toast('CoopServe Helpline: 1800-COOP-SERVE\nAvailable 8 AM - 8 PM', {
+                toast('Sahakar Sathi Helpline: 1800-COOP-SERVE\nAvailable 8 AM - 8 PM', {
                   icon: '📞',
                   duration: 6000,
                 })

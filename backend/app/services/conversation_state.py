@@ -154,7 +154,7 @@ def process_channel_message(
     if not customer:
         normalized_phone = normalize_phone(raw_phone)
         reply = (
-            f"Welcome to CoopServe!\n\n"
+            f"Welcome to Sahakar Sathi!\n\n"
             f"We could not find a registered customer account linked to phone number {normalized_phone}.\n\n"
             f"To request household & community services via WhatsApp or Phone, please register or link your mobile number at our official portal:\n"
             f"http://localhost:5173"
@@ -215,7 +215,7 @@ def process_channel_message(
 
         menu_str, _ = get_active_services_menu(db)
         reply = (
-            f"Hello {customer.name}! Welcome to CoopServe (Cooperative Community Services).\n"
+            f"Hello {customer.name}! Welcome to Sahakar Sathi (Cooperative Community Services).\n"
             f"How can we help you today?\n\n"
             f"Please reply with the number of your required service:\n"
             f"{menu_str}\n\n"
@@ -376,7 +376,7 @@ def process_channel_message(
                 f"Date: {ctx.get('preferred_date')}\n"
                 f"Time: {ctx.get('preferred_time')}\n\n"
                 f"A cooperative administrator will evaluate worker recommendations and allocate a verified worker shortly. "
-                f"You can track this request anytime on your CoopServe portal account."
+                f"You can track this request anytime on your Sahakar Sathi portal account."
             )
             return reply, "REQUEST_CREATED"
         elif text_lower in ("2", "no", "cancel"):
