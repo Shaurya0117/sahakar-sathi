@@ -1,8 +1,16 @@
-# Sahakar Sathi — Cooperative Community Services Platform
+# Sahakar Sathi — Smart India Hackathon 2026 🇮🇳
 
-**Sahakar Sathi** is a cooperative-owned digital portal that connects households and community members with verified local service workers.
+![Sahakar Sathi](https://img.shields.io/badge/SIH-2026-orange?style=for-the-badge) ![Status](https://img.shields.io/badge/Status-Completed-success?style=for-the-badge) ![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)
 
-Designed in the spirit of official public service portals (such as *Seva Mitra*), Sahakar Sathi ensures transparent service delivery, worker credential verification, and equitable work distribution across member workers.
+**Sahakar Sathi** is a cooperative-owned digital gig marketplace that directly connects households and local communities with verified, background-checked service professionals (electricians, plumbers, cleaners, carpenters, etc.). 
+
+Built specifically for the **Smart India Hackathon 2026**, this platform acts as an official, transparent public service portal. It is designed to replace predatory commission-based gig platforms (like Urban Company or TaskRabbit) with a fair, equitable, worker-governed cooperative model. 
+
+### 🎯 The Problem
+Gig workers currently face exorbitant commission fees (often up to 25-30%), algorithmic biases that unfairly distribute work, and lack of true ownership. Customers lack a unified, official, trust-verified portal for community services.
+
+### 💡 Our Solution
+Sahakar Sathi ensures **0% predatory platform fees** (direct peer-to-peer payment), worker credential verification by cooperative admins, and a smart **Equitable Workload Recommendation Engine** that distributes jobs fairly among cooperative members based on distance, skill, and recent workload.
 
 ---
 
