@@ -55,11 +55,14 @@ def generate_match_explanation(
     elif exp_years >= 2:
         reasons.append(f"Good experience level ({exp_years} years)")
 
-    # 6. Workload Fairness reason
-    fairness_score = breakdown.get("workload_fairness", breakdown.get("fairness", 0))
-    if fairness_score >= 85:
-        reasons.append("Low current workload (promotes fair cooperative work distribution)")
-    elif fairness_score >= 60:
-        reasons.append("Balanced current workload")
+    # 6. Bio-Economic Fatigue Routing reason
+    bio_score = breakdown.get("bio_economic_score", 0)
+    fatigue = breakdown.get("fatigue_index", 0)
+    deficit = breakdown.get("economic_deficit", 0)
+    
+    if bio_score >= 80:
+        reasons.append(f"Highly optimized bio-economic match (Income deficit: {deficit}%, Fatigue: {fatigue}%)")
+    elif bio_score >= 50:
+        reasons.append(f"Fair bio-economic routing priority (Fatigue Index: {fatigue}%)")
 
     return reasons

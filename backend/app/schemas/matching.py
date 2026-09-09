@@ -14,7 +14,9 @@ class ScoreBreakdown(BaseModel):
     availability: float
     rating: float
     experience: float
-    workload_fairness: float
+    bio_economic_score: float
+    fatigue_index: float
+    economic_deficit: float
 
 
 class WorkerRecommendation(BaseModel):

@@ -21,7 +21,7 @@ from app.services.matching.explain import generate_match_explanation
 from app.services.matching.scorer import (
     calculate_availability_score,
     calculate_experience_score,
-    calculate_fairness_score,
+    calculate_bio_economic_metrics,
     calculate_location_score,
     calculate_rating_score,
     calculate_skill_score,
@@ -72,7 +72,7 @@ def get_matching_recommendations(
         availability_score = calculate_availability_score(worker)
         rating_score = calculate_rating_score(worker)
         experience_score = calculate_experience_score(worker)
-        fairness_score = calculate_fairness_score(worker)
+        bio_metrics = calculate_bio_economic_metrics(worker)
 
         breakdown_dict = {
             "skill_match": skill_score,
@@ -80,7 +80,9 @@ def get_matching_recommendations(
             "availability": availability_score,
             "rating": rating_score,
             "experience": experience_score,
-            "workload_fairness": fairness_score,
+            "bio_economic_score": bio_metrics["bio_economic_score"],
+            "fatigue_index": bio_metrics["fatigue_index"],
+            "economic_deficit": bio_metrics["economic_deficit"]
         }
 
         total_score = calculate_total_score(breakdown_dict)
