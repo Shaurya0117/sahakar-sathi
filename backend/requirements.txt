@@ -5,7 +5,7 @@ pydantic
 pydantic-settings
 python-jose[cryptography]
 passlib[bcrypt]
-bcrypt
+bcrypt==3.2.2
 python-multipart
 httpx
 pytest
