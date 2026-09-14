@@ -1,7 +1,7 @@
 """
 FastAPI route handlers for Worker Allocation and Booking Lifecycle.
 """
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, status, Body
 from sqlalchemy.orm import Session

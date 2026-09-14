@@ -458,6 +458,232 @@ Thank you for choosing the Cooperative!
           )}
         </AnimatePresence>
 
+        {/* ── Snabbit-Style Trust Showcase: Experts Vetted for Quality ── */}
+        <section className="mt-10 mb-12">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
+              Experts Vetted for <span className="text-[#e91e63]">Quality</span>
+            </h2>
+            <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto font-medium">
+              Every cooperative worker undergoes strict background checks, certified hands-on training, and maintains top peer ratings.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Card 1: Top Rated Experts */}
+            <motion.div
+              whileHover={{ y: -4 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[#fff5f7] border border-pink-100 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[300px] shadow-sm"
+            >
+              <div>
+                <h3 className="text-lg font-extrabold text-[#4a1525] mb-5 tracking-tight">Top Rated Experts</h3>
+              </div>
+
+              {/* Staggered Worker Pill Cards */}
+              <div className="relative py-2 flex flex-col justify-center">
+                {/* Back card: Sweta Patil */}
+                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-3 shadow-md border border-pink-100/80 flex items-center gap-3 w-52 ml-auto -mb-4 relative z-0 transform hover:scale-105 transition-transform">
+                  <img
+                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80"
+                    alt="Sweta Patil"
+                    className="w-10 h-10 rounded-full object-cover ring-2 ring-pink-100 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-slate-800 truncate">Sweta Patil</h4>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
+                        ★ 4.7
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Front card: Vishal Yadav */}
+                <div className="bg-white rounded-2xl p-4 shadow-xl border border-pink-100/90 w-64 relative z-10 transform hover:scale-105 transition-transform">
+                  <div className="flex items-center gap-3">
+                    <div className="relative shrink-0">
+                      <img
+                        src="https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=120&auto=format&fit=crop&q=80"
+                        alt="Vishal Yadav"
+                        className="w-12 h-12 rounded-full object-cover ring-2 ring-[#e91e63]/30"
+                      />
+                      <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white" title="Verified Active"></span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="text-sm font-extrabold text-slate-900 truncate">Vishal Yadav</h4>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                          ★ 4.9
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-medium">Electrician</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Profile credential preview bars */}
+                  <div className="mt-3.5 space-y-1.5">
+                    <div className="h-2 bg-slate-100 rounded-full w-full"></div>
+                    <div className="h-2 bg-slate-100 rounded-full w-3/4"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 text-[11px] font-semibold text-pink-900/60 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#e91e63]"></span>
+                Top 1% rated cooperative service partners
+              </div>
+            </motion.div>
+
+            {/* Card 2: Professionally Trained */}
+            <motion.div
+              whileHover={{ y: -4 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[#fff5f7] border border-pink-100 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[300px] shadow-sm"
+            >
+              <div>
+                <h3 className="text-lg font-extrabold text-[#4a1525] mb-4 tracking-tight">Professionally Trained</h3>
+              </div>
+
+              {/* Central Training Certificate Card */}
+              <div className="bg-white rounded-2xl p-4 shadow-lg border border-pink-100/90 flex flex-col items-center text-center my-auto">
+                {/* Rosette Ribbon Badge */}
+                <div className="w-14 h-14 relative flex items-center justify-center mb-2">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-[#e91e63] to-[#ff4081] rounded-2xl rotate-45 shadow-md"></div>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-[#e91e63] to-[#ff4081] rounded-2xl shadow-md"></div>
+                  <svg className="w-7 h-7 text-white relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </div>
+
+                <h4 className="text-sm font-extrabold text-slate-900">Training Completed Successfully!</h4>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5 mb-3.5">Standardized SOP & Safety Certified</p>
+
+                {/* 4 Skill Vignette Photos */}
+                <div className="grid grid-cols-4 gap-2 w-full">
+                  <div className="aspect-square rounded-xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Electrical Inspection">
+                    <img
+                      src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=120&auto=format&fit=crop&q=80"
+                      alt="Wiring"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  </div>
+                  <div className="aspect-square rounded-xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Deep Sanitation">
+                    <img
+                      src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=120&auto=format&fit=crop&q=80"
+                      alt="Cleaning"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  </div>
+                  <div className="aspect-square rounded-xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Appliance Servicing">
+                    <img
+                      src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=120&auto=format&fit=crop&q=80"
+                      alt="Appliance Repair"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  </div>
+                  <div className="aspect-square rounded-xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Quality Assurance">
+                    <img
+                      src="https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?w=120&auto=format&fit=crop&q=80"
+                      alt="Safety Check"
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 text-[11px] font-semibold text-pink-900/60 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#e91e63]"></span>
+                Hands-on practical training & safety audit
+              </div>
+            </motion.div>
+
+            {/* Card 3: Background verified */}
+            <motion.div
+              whileHover={{ y: -4 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[#fff5f7] border border-pink-100 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[300px] shadow-sm"
+            >
+              <div>
+                <h3 className="text-lg font-extrabold text-[#4a1525] mb-4 tracking-tight">Background verified</h3>
+              </div>
+
+              {/* Verification Network Diagram */}
+              <div className="bg-white rounded-2xl p-4 shadow-lg border border-pink-100/90 flex items-center justify-between relative overflow-hidden my-auto">
+                {/* Left: 3 Screening Candidate Avatars */}
+                <div className="flex flex-col gap-2 relative z-10 shrink-0">
+                  <img
+                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80"
+                    alt="Applicant 1"
+                    className="w-8 h-8 rounded-full object-cover border-2 border-slate-200 filter grayscale"
+                    title="Aadhaar KYC Scan"
+                  />
+                  <img
+                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80"
+                    alt="Applicant 2"
+                    className="w-8 h-8 rounded-full object-cover border-2 border-slate-200 filter grayscale"
+                    title="Police Clearance Record"
+                  />
+                  <img
+                    src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80"
+                    alt="Applicant 3"
+                    className="w-8 h-8 rounded-full object-cover border-2 border-slate-200 filter grayscale"
+                    title="Residential Address Verification"
+                  />
+                </div>
+
+                {/* Connecting Lines SVG */}
+                <svg className="w-14 h-24 text-pink-200 stroke-current shrink-0" fill="none" viewBox="0 0 60 100">
+                  <path d="M 5 18 C 30 18, 30 50, 55 50" strokeWidth="2.5" strokeDasharray="3 3" />
+                  <path d="M 5 50 L 55 50" strokeWidth="2.5" strokeDasharray="3 3" />
+                  <path d="M 5 82 C 30 82, 30 50, 55 50" strokeWidth="2.5" strokeDasharray="3 3" />
+                </svg>
+
+                {/* Center: Sahakar Sathi VERIFIED Shield */}
+                <div className="relative z-10 flex flex-col items-center shrink-0">
+                  <div className="w-18 h-22 bg-gradient-to-b from-[#ff1361] to-[#c2185b] rounded-2xl shadow-xl flex flex-col items-center justify-center p-2 text-white border-2 border-white/90">
+                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center mb-1">
+                      <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </div>
+                    <span className="text-[9px] font-bold text-white leading-tight text-center">Sahakar Sathi</span>
+                    <span className="text-[8px] font-black tracking-wider uppercase text-pink-100">VERIFIED</span>
+                  </div>
+                </div>
+
+                {/* Connector Right */}
+                <svg className="w-8 h-8 text-pink-300 stroke-current shrink-0" fill="none" viewBox="0 0 30 30">
+                  <path d="M 2 15 L 28 15" strokeWidth="2.5" />
+                </svg>
+
+                {/* Right: Verified Expert Avatar with Check Badge */}
+                <div className="relative z-10 shrink-0">
+                  <div className="relative">
+                    <img
+                      src="https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=120&auto=format&fit=crop&q=80"
+                      alt="Verified Worker"
+                      className="w-11 h-11 rounded-full object-cover ring-2 ring-[#e91e63]"
+                    />
+                    <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#e91e63] text-white rounded-full flex items-center justify-center shadow-md">
+                      <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 text-[11px] font-semibold text-pink-900/60 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#e91e63]"></span>
+                100% Aadhaar e-KYC & police clearance screened
+              </div>
+            </motion.div>
+          </div>
+        </section>
+
         {/* ── Service Catalog Marketplace ────────────────────────── */}
         <section className="space-y-6 mt-8">
           <div className="flex items-center justify-between flex-wrap gap-4">
