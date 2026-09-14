@@ -466,7 +466,7 @@ export default function WorkerDashboardPage() {
                 </div>
                 <motion.h2 className="text-4xl font-extrabold text-white mt-1"
                   initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, type: 'spring' }}>
-                  ${jobs.filter(b => b.status === 'COMPLETED').reduce((sum, b) => sum + (b.amount || 0), 0).toFixed(2)}
+                  ₹{jobs.filter(b => b.status === 'COMPLETED').reduce((sum, b) => sum + (b.amount || 0), 0).toFixed(2)}
                 </motion.h2>
               </div>
               <div className="flex gap-4">
@@ -479,7 +479,7 @@ export default function WorkerDashboardPage() {
                   whileHover={{ scale: 1.05 }}>
                   <p className="text-[10px] text-slate-400 font-bold uppercase">Expected Payout</p>
                   <p className="text-xl font-bold mt-1 text-amber-400">
-                    ${jobs.filter(b => b.status === 'IN_PROGRESS' || b.status === 'ACCEPTED').reduce((sum, b) => sum + (b.amount || 0), 0).toFixed(2)}
+                    ₹{jobs.filter(b => b.status === 'IN_PROGRESS' || b.status === 'ACCEPTED').reduce((sum, b) => sum + (b.amount || 0), 0).toFixed(2)}
                   </p>
                 </motion.div>
               </div>

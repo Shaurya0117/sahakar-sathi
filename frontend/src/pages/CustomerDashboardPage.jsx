@@ -243,7 +243,7 @@ Worker Assigned: ${booking.worker_name}
 Service Performed: ${request.service_name}
 Location: ${request.location}
 Service Date: ${booking.scheduled_date} at ${booking.scheduled_time}
-Total Amount: $${booking.amount ? booking.amount.toFixed(2) : '0.00'}
+Total Amount: ₹${booking.amount ? booking.amount.toFixed(2) : '0.00'}
 
 Thank you for choosing the Cooperative!
 =========================================
@@ -674,7 +674,7 @@ Thank you for choosing the Cooperative!
                                 onClick={() => setPaymentBooking(booking)}
                                 className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition flex items-center gap-1 shadow-sm"
                               >
-                                💳 Pay ${booking.amount}
+                                💳 Pay ₹${booking.amount}
                               </MotionButton>
                             )}
                             {paidBookings.includes(booking.id) && (
@@ -939,7 +939,7 @@ Thank you for choosing the Cooperative!
             </div>
             <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center mt-4">
               <span className="text-xs font-bold text-slate-500 uppercase">Amount Due</span>
-              <div className="text-3xl font-extrabold text-slate-900 mt-1">${paymentBooking.amount}</div>
+              <div className="text-3xl font-extrabold text-slate-900 mt-1">₹{paymentBooking.amount}</div>
             </div>
             <form onSubmit={handleProcessPayment} className="space-y-4 mt-4">
               <div><label className="block text-xs font-bold text-slate-700 mb-1">Card Number</label>
@@ -956,7 +956,7 @@ Thank you for choosing the Cooperative!
                 {processingPayment ? (
                   <><motion.div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" animate={{ rotate: 360 }}
                     transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} />Processing...</>
-                ) : `Pay $${paymentBooking.amount}`}
+                ) : `Pay ₹${paymentBooking.amount}`}
               </MotionButton>
             </form>
           </>
