@@ -120,7 +120,7 @@ TWILIO_VOICE_NUMBER=+14155238886
 | :--- | :--- | :--- |
 | **Cooperative Admin** | `admin@sahakarsathi.demo` | `Admin@1234` |
 | **Customer (Asha Sharma)** | `asha.customer@sahakarsathi.demo` (`+91 98765 00000`) | `Customer@1234` |
-| **Worker (Rahul Kumar)** | `rahul.electrician@sahakarsathi.demo` (`+91 98765 43210`) | `Worker@1234` |
+| **Worker (Vishal Yadav)** | `vishal.electrician@sahakarsathi.demo` (`+91 98765 43210`) | `Worker@1234` |
 
 ---
 

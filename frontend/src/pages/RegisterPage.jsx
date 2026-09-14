@@ -154,7 +154,7 @@ export default function RegisterPage() {
             </motion.div>
 
             {[
-              { id: 'reg-name', name: 'name', type: 'text', label: 'Full Name', placeholder: 'Rahul Kumar', delay: 0.3 },
+              { id: 'reg-name', name: 'name', type: 'text', label: 'Full Name', placeholder: 'Vishal Yadav', delay: 0.3 },
               { id: 'reg-email', name: 'email', type: 'email', label: 'Email Address', placeholder: 'user@example.com', delay: 0.35 },
               { id: 'reg-phone', name: 'phone', type: 'tel', label: 'Phone Number', placeholder: '9876543210', delay: 0.4, optional: true },
               { id: 'reg-password', name: 'password', type: 'password', label: 'Password', placeholder: '••••••••', delay: 0.45, hint: '(min 8 characters)' },

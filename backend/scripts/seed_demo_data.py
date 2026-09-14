@@ -30,8 +30,8 @@ ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "Admin@1234")
 
 DEMO_WORKERS = [
     {
-        "name": "Rahul Kumar",
-        "email": "rahul.electrician@sahakarsathi.demo",
+        "name": "Vishal Yadav",
+        "email": "vishal.electrician@sahakarsathi.demo",
         "phone": "+91 98765 43210",
         "profession": "Electrician",
         "experience_years": 5,

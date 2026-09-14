@@ -13,8 +13,8 @@ from app.services.auth import hash_password
 def test_channel_worker_phone_rejection(client: TestClient, db: Session):
     """Worker phone number attempting booking without CUSTOMER role must be rejected."""
     worker_user = User(
-        name="Rahul Kumar",
-        email="rahul.worker.test@coopserve.demo",
+        name="Vishal Yadav",
+        email="vishal.worker.test@sahakarsathi.demo",
         phone="+919876543210",
         password_hash=hash_password("Worker@1234"),
         role=UserRole.WORKER,
