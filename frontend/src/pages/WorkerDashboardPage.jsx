@@ -25,6 +25,7 @@ import {
 import { createWorkerProfile, updateWorkerProfile } from '../services/workerService'
 import { useLanguage } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
+import WorkerVoiceAssistant from '../components/WorkerVoiceAssistant'
 
 const PRESET_SKILLS = [
   'Wiring', 'Fan Repair', 'Switch Repair', 'Plumbing',
@@ -142,12 +143,17 @@ export default function WorkerDashboardPage() {
       toast.error('Voice synthesis not supported in this browser.')
       return
     }
-    const text = `Job for ${job.service_name}. Category: ${job.service_category}. Location: ${job.location}. Customer is ${job.customer_name}. Scheduled on ${job.scheduled_date} at ${job.scheduled_time}.`
+    const isHindi = language === 'hi'
+    const text = isHindi
+      ? `नमस्ते ${user?.name || 'विशाल'} जी। काम का विवरण: ${job.service_name}। ग्राहक का नाम ${job.customer_name} है। स्थान ${job.location} है। समय: ${job.scheduled_date} को ${job.scheduled_time}। भुगतान ₹${job.amount || 499} रुपये है।`
+      : `Job alert for ${user?.name || 'Vishal'}. Service: ${job.service_name}. Category: ${job.service_category}. Location: ${job.location}. Customer is ${job.customer_name}. Scheduled on ${job.scheduled_date} at ${job.scheduled_time}. Payout is ₹${job.amount || 499}.`
+    
+    window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
-    // Attempt to set language
-    utterance.lang = language === 'hi' ? 'hi-IN' : language === 'mr' ? 'mr-IN' : 'en-US'
+    utterance.lang = isHindi ? 'hi-IN' : 'en-US'
+    utterance.rate = 0.95
     window.speechSynthesis.speak(utterance)
-    toast('Reading job details...', { icon: '🔊' })
+    toast(isHindi ? 'काम का विवरण बोलकर सुनाया जा रहा है...' : 'Reading job details aloud...', { icon: '🔊' })
   }
 
   const handleDictateNote = (jobId) => {
@@ -748,6 +754,14 @@ export default function WorkerDashboardPage() {
           </motion.div>
         </div>
       )}
+
+      {/* ── Worker Voice Assistant (Snabbit Style Voice Control) ──── */}
+      <WorkerVoiceAssistant 
+        workerName={user?.name || 'विशाल'} 
+        jobs={jobs} 
+        onAcceptJob={handleAcceptJob} 
+        onStartJob={handleStartJob} 
+      />
 
       <Footer />
     </AnimatedPage>
