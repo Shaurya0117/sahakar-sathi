@@ -18,6 +18,7 @@ from app.schemas.worker import (
     WorkerResponse,
     WorkerUpdateRequest,
 )
+from app.services.trust_score import calculate_trust_score
 
 
 # ── Profile completion ─────────────────────────────────────────────────────────
@@ -61,12 +62,26 @@ def calculate_profile_completion(worker: Worker) -> int:
 
 # ── Response builder ───────────────────────────────────────────────────────────
 
-def build_worker_response(worker: Worker) -> WorkerResponse:
+def build_worker_response(worker: Worker, db: Session = None) -> WorkerResponse:
     """
     Build a WorkerResponse, enriching the worker data with fields from the
-    linked User and computing profile_completion server-side.
+    linked User, computing profile_completion server-side, and calculating
+    the Patent Feature: Composite Verifiable Trust Score.
     """
     user = worker.user
+
+    # Patent Feature: Calculate live trust score if DB session available
+    trust_data = None
+    trust_score_val = None
+    trust_tier_val = None
+    if db:
+        try:
+            trust_data = calculate_trust_score(db, worker)
+            trust_score_val = trust_data.get("composite_trust_score")
+            trust_tier_val = trust_data.get("trust_tier")
+        except Exception:
+            pass  # Graceful fallback if trust calculation fails
+
     return WorkerResponse(
         id=worker.id,
         user_id=worker.user_id,
@@ -84,6 +99,9 @@ def build_worker_response(worker: Worker) -> WorkerResponse:
         verification_status=worker.verification_status,
         rating=worker.rating,
         total_jobs=worker.total_jobs,
+        trust_score=trust_score_val,
+        trust_tier=trust_tier_val,
+        trust_breakdown=trust_data,
         profile_completion=calculate_profile_completion(worker),
     )
 

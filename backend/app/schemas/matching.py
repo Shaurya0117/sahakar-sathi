@@ -1,9 +1,41 @@
 """
 Pydantic schemas for Explainable AI Worker Matching.
+
+Includes Patent Feature: Cooperative Workload Equity Graph — multi-dimensional
+fairness scoring across income parity, geographic burden, skill utilization,
+temporal equity, and fatigue capacity.
 """
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from pydantic import BaseModel
+
+
+class EquityDimensionContributions(BaseModel):
+    """Weighted contribution of each equity dimension to the composite score."""
+
+    income_parity: float = 0.0
+    geographic_burden: float = 0.0
+    skill_utilization: float = 0.0
+    temporal_fairness: float = 0.0
+    fatigue_capacity: float = 0.0
+
+
+class EquityBreakdown(BaseModel):
+    """
+    Patent Feature: Cooperative Workload Equity Graph.
+
+    Multi-dimensional fairness breakdown for a worker candidate,
+    computed in real-time during matching.
+    """
+
+    income_parity: float = 0.0
+    geographic_burden: float = 0.0
+    skill_utilization: float = 0.0
+    temporal_fairness: float = 0.0
+    fatigue_capacity: float = 0.0
+    composite_equity_score: float = 0.0
+    is_fatigued: bool = False
+    dimension_contributions: Optional[EquityDimensionContributions] = None
 
 
 class ScoreBreakdown(BaseModel):
@@ -17,6 +49,8 @@ class ScoreBreakdown(BaseModel):
     bio_economic_score: float
     fatigue_index: float
     economic_deficit: float
+    # Patent Feature: Equity Graph dimensions
+    equity: Optional[EquityBreakdown] = None
 
 
 class WorkerRecommendation(BaseModel):
@@ -33,6 +67,8 @@ class WorkerRecommendation(BaseModel):
     score: float
     breakdown: ScoreBreakdown
     reasons: List[str]
+    # Patent Feature: Trust Score (populated when available)
+    trust_score: Optional[float] = None
 
 
 class RequestMatchingResponse(BaseModel):

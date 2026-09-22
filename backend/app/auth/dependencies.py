@@ -59,9 +59,10 @@ def get_current_user(
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
     """Allow only ADMIN users. Raises 403 for other roles."""
     if current_user.role != UserRole.ADMIN:
+        role_str = getattr(current_user.role, "value", str(current_user.role))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
+            detail=f"Admin access required (currently signed in as {role_str}: {current_user.name}). Please switch to an Admin account.",
         )
     return current_user
 
@@ -69,9 +70,10 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
 def require_worker(current_user: User = Depends(get_current_user)) -> User:
     """Allow only WORKER users. Raises 403 for other roles."""
     if current_user.role != UserRole.WORKER:
+        role_str = getattr(current_user.role, "value", str(current_user.role))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Worker access required",
+            detail=f"Worker access required (currently signed in as {role_str}: {current_user.name}). Please switch to a Worker account.",
         )
     return current_user
 
@@ -79,8 +81,10 @@ def require_worker(current_user: User = Depends(get_current_user)) -> User:
 def require_customer(current_user: User = Depends(get_current_user)) -> User:
     """Allow only CUSTOMER users. Raises 403 for other roles."""
     if current_user.role != UserRole.CUSTOMER:
+        role_str = getattr(current_user.role, "value", str(current_user.role))
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Customer access required",
+            detail=f"Customer access required (currently signed in as {role_str}: {current_user.name}). Please switch to a Customer account.",
         )
     return current_user
+

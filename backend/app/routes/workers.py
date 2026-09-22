@@ -63,7 +63,7 @@ def get_my_profile(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Worker profile not found. Please create your profile.",
         )
-    return build_worker_response(worker)
+    return build_worker_response(worker, db)
 
 
 # ── POST /api/workers/me ───────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ def create_my_profile(
         )
     # Refresh relationship so build_worker_response can access worker.user
     db.refresh(worker)
-    return build_worker_response(worker)
+    return build_worker_response(worker, db)
 
 
 # ── PUT /api/workers/me ────────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ def update_my_profile(
             detail="Worker profile not found. Create your profile first.",
         )
     worker = update_worker_profile(db, worker, data)
-    return build_worker_response(worker)
+    return build_worker_response(worker, db)
 
 
 # ── GET /api/workers/{id} ──────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ def get_worker(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Worker not found",
         )
-    return build_worker_response(worker)
+    return build_worker_response(worker, db)
 
 
 # ── GET /api/workers ───────────────────────────────────────────────────────────
@@ -162,7 +162,7 @@ def list_workers(
 ):
     """Return all worker profiles. ADMIN only."""
     workers = get_all_workers(db)
-    return [build_worker_response(w) for w in workers]
+    return [build_worker_response(w, db) for w in workers]
 
 
 # ── PATCH /api/workers/{id}/verification ──────────────────────────────────────
@@ -191,4 +191,4 @@ def update_worker_verification(
             detail="Worker not found",
         )
     worker = update_verification_status(db, worker, data.status)
-    return build_worker_response(worker)
+    return build_worker_response(worker, db)

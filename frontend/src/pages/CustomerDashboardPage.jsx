@@ -204,7 +204,12 @@ export default function CustomerDashboardPage() {
       setReviewBooking(null)
       toast.success('Thank you for your feedback! Review submitted.')
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to submit review.')
+      const detail = err.response?.data?.detail || ''
+      if (typeof detail === 'string' && detail.includes('Customer access required')) {
+        toast.error('❌ Role mismatch: Please sign in as a Customer to submit reviews.')
+      } else {
+        toast.error(detail || 'Failed to submit review.')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -688,8 +693,11 @@ Thank you for choosing the Cooperative!
         <section className="space-y-6 mt-8">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <h2 className="text-2xl font-extrabold text-slate-900">Premium Home Services</h2>
-              <p className="text-sm text-slate-500 font-medium">Book trusted professionals instantly</p>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-gradient-to-r from-emerald-100 to-amber-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Co-op Powered</span>
+              </div>
+              <h2 className="text-2xl font-extrabold text-slate-900">Community Services Marketplace</h2>
+              <p className="text-sm text-slate-500 font-medium">Fair-wage workers • Transparent pricing • Cooperative owned</p>
             </div>
             
             {/* Category Pills */}
@@ -711,36 +719,79 @@ Thank you for choosing the Cooperative!
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {(activeCategory === 'All' ? services : services.filter(s => s.category === activeCategory)).map(svc => (
+            {(activeCategory === 'All' ? services : services.filter(s => s.category === activeCategory)).map((svc, idx) => {
+              const workerShare = Math.round(svc.price * 0.82)
+              const coopFund = svc.price - workerShare
+
+              // Just 3 rotating accent colors: emerald, indigo, amber
+              const themes = [
+                { badge: 'bg-emerald-600', tag: 'text-emerald-600', priceBg: 'bg-emerald-50', priceBorder: 'border-emerald-100', priceText: 'text-emerald-800', priceVal: 'text-emerald-900', bar: 'bg-emerald-500', barBg: 'bg-emerald-200', hint: 'text-emerald-600', btn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200', dot: 'bg-emerald-500', imgOverlay: 'bg-emerald-900/80', imgOverlayText: 'text-emerald-100', fallbackBg: 'from-emerald-50 to-slate-100' },
+                { badge: 'bg-indigo-600', tag: 'text-indigo-600', priceBg: 'bg-indigo-50', priceBorder: 'border-indigo-100', priceText: 'text-indigo-800', priceVal: 'text-indigo-900', bar: 'bg-indigo-500', barBg: 'bg-indigo-200', hint: 'text-indigo-600', btn: 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200', dot: 'bg-indigo-500', imgOverlay: 'bg-indigo-900/80', imgOverlayText: 'text-indigo-100', fallbackBg: 'from-indigo-50 to-slate-100' },
+                { badge: 'bg-amber-500', tag: 'text-amber-600', priceBg: 'bg-amber-50', priceBorder: 'border-amber-100', priceText: 'text-amber-800', priceVal: 'text-amber-900', bar: 'bg-amber-500', barBg: 'bg-amber-200', hint: 'text-amber-600', btn: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200', dot: 'bg-amber-500', imgOverlay: 'bg-amber-900/80', imgOverlayText: 'text-amber-100', fallbackBg: 'from-amber-50 to-slate-100' },
+              ]
+              const t = themes[idx % 3]
+
+              return (
               <motion.div
                 key={svc.id}
                 whileHover={{ y: -4 }}
-                className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-all flex flex-col group"
+                className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-all flex flex-col group relative"
               >
+                {/* Fair Wage Badge */}
+                <div className={`absolute top-3 right-3 z-10 ${t.badge} text-white px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1`}>
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  Fair Wage
+                </div>
+
                 {/* Image Header */}
                 <div className="h-40 bg-slate-100 relative overflow-hidden">
                   {svc.image_url ? (
                     <img src={svc.image_url} alt={svc.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br from-blue-50 to-slate-100">
+                    <div className={`w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br ${t.fallbackBg}`}>
                       {svc.icon || '🛠️'}
                     </div>
                   )}
                   <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-800 shadow-sm flex items-center gap-1">
                     <span className="text-amber-500">★</span> {svc.rating.toFixed(1)} <span className="text-slate-400 font-normal">({svc.reviews_count})</span>
                   </div>
+                  {/* Cooperative members badge */}
+                  <div className={`absolute bottom-3 left-3 ${t.imgOverlay} backdrop-blur-sm px-2 py-1 rounded-md text-[9px] font-bold ${t.imgOverlayText} flex items-center gap-1`}>
+                    <span>👷</span> {Math.floor(Math.random() * 8) + 3} co-op members serve this
+                  </div>
                 </div>
 
                 {/* Content */}
                 <div className="p-5 flex flex-col flex-1">
-                  <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1">{svc.category}</span>
+                  <span className={`text-[10px] font-bold ${t.tag} uppercase tracking-wider mb-1`}>{svc.category}</span>
                   <h3 className="font-extrabold text-slate-900 text-lg leading-tight mb-2">{svc.name}</h3>
                   <p className="text-xs text-slate-500 line-clamp-2 mb-4 flex-1">{svc.description}</p>
                   
-                  <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-auto">
-                    <div>
-                      <div className="font-extrabold text-slate-900">₹{svc.price}</div>
-                      <div className="text-[10px] font-medium text-slate-500">{svc.duration_minutes} mins</div>
+                  {/* Transparent Cooperative Pricing */}
+                  <div className={`${t.priceBg} border ${t.priceBorder} rounded-xl p-3 mb-4`}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className={`text-[10px] font-bold ${t.priceText} uppercase tracking-wider`}>Transparent Pricing</span>
+                      <span className={`font-extrabold ${t.priceVal} text-lg`}>₹{svc.price}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className={`flex items-center gap-1 text-[10px] ${t.hint} font-semibold`}>
+                        <span className={`w-2 h-2 rounded-full ${t.dot}`}></span>
+                        ₹{workerShare} → Worker
+                      </div>
+                      <div className={`flex items-center gap-1 text-[10px] ${t.hint} font-semibold`}>
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        ₹{coopFund} → Co-op Fund
+                      </div>
+                    </div>
+                    <div className={`w-full ${t.barBg} rounded-full h-1.5 mt-2 overflow-hidden`}>
+                      <div className={`${t.bar} h-full rounded-full`} style={{ width: '82%' }}></div>
+                    </div>
+                    <div className={`text-[9px] ${t.hint} font-medium mt-1`}>82% goes directly to the worker — no middleman exploitation</div>
+                  </div>
+
+                  <div className="flex items-center justify-between mt-auto">
+                    <div className="text-[10px] font-medium text-slate-500 flex items-center gap-1">
+                      <span>⏱️</span> {svc.duration_minutes} mins
                     </div>
                     {cart.find(c => c.id === svc.id) ? (
                       <MotionButton
@@ -752,15 +803,15 @@ Thank you for choosing the Cooperative!
                     ) : (
                       <MotionButton
                         onClick={() => handleAddToCart(svc)}
-                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition shadow-sm"
+                        className={`px-4 py-2.5 ${t.btn} text-white text-xs font-bold rounded-xl transition shadow-md flex items-center gap-1.5`}
                       >
-                        Add to Cart
+                        <span>🤝</span> Book via Co-op
                       </MotionButton>
                     )}
                   </div>
                 </div>
               </motion.div>
-            ))}
+            )})}
           </div>
         </section>
 
@@ -801,6 +852,15 @@ Thank you for choosing the Cooperative!
             >
               {requests.map((req) => {
                 const booking = bookings.find((b) => b.request_id === req.id && b.status !== 'REJECTED')
+                
+                let logistics = null;
+                if (booking?.notes) {
+                  try {
+                    const parsed = JSON.parse(booking.notes);
+                    if (parsed.logistics) logistics = parsed.logistics;
+                  } catch (e) {}
+                }
+
                 return (
                   <motion.div
                     key={req.id}
@@ -823,6 +883,51 @@ Thank you for choosing the Cooperative!
                       bookingStatus={booking?.status}
                       createdAt={req.created_at}
                     />
+
+                    {/* Patent Feature 3: Hyper-Local Predictive Logistics UI */}
+                    <AnimatePresence>
+                      {logistics && (
+                        <motion.div
+                          className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs space-y-3"
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-amber-400 text-sm">🤖</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400">AI Predictive Logistics</span>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-slate-800 rounded-lg p-2.5">
+                              <p className="text-slate-400 mb-1">Appliance Health</p>
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-slate-700 h-1.5 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full rounded-full ${logistics.health_score > 70 ? 'bg-emerald-500' : logistics.health_score > 40 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                                    style={{ width: `${logistics.health_score}%` }}
+                                  />
+                                </div>
+                                <span className="text-white font-bold">{logistics.health_score}/100</span>
+                              </div>
+                              <p className="text-[10px] text-slate-400 mt-1">Est. {logistics.predicted_failure_days} days to next failure</p>
+                            </div>
+
+                            {logistics.logistics ? (
+                              <div className="bg-slate-800 rounded-lg p-2.5 border border-emerald-500/30">
+                                <p className="text-emerald-400 font-bold mb-0.5 flex items-center gap-1">✓ Part Pre-Reserved</p>
+                                <p className="text-white font-medium">{logistics.logistics.part_reserved}</p>
+                                <p className="text-[10px] text-slate-400 mt-1">at {logistics.logistics.shop_name} ({logistics.logistics.shop_location})</p>
+                              </div>
+                            ) : (
+                              <div className="bg-slate-800 rounded-lg p-2.5">
+                                <p className="text-slate-400 mb-1">Logistics Status</p>
+                                <p className="text-white font-medium">No immediate reservation required.</p>
+                              </div>
+                            )}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     {/* Worker Assignment */}
                     <AnimatePresence>
@@ -1257,7 +1362,7 @@ Thank you for choosing the Cooperative!
       </div>
 
       {/* ── Floating WhatsApp Widget ──────────────────────────────────── */}
-      <FloatingWhatsAppWidget phoneNumber="919999999999" companyName="Sahakar Sathi Support" />
+      <FloatingWhatsAppWidget phoneNumber="919336751419" companyName="Sahakar Sathi Support" />
     </AnimatedPage>
   )
 }

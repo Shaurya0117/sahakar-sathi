@@ -165,12 +165,18 @@ def calculate_bio_economic_metrics(worker: Worker) -> dict:
 
 
 def calculate_total_score(breakdown: dict) -> float:
+    # Patent Feature: Use Equity Graph composite score if available, fallback to legacy bio_economic_score
+    fairness_score = breakdown.get("equity_score") 
+    if fairness_score is None:
+        fairness_score = breakdown.get("bio_economic_score", 0.0)
+
     total = (
-        breakdown["skill_match"]       * WEIGHT_SKILL +
-        breakdown["location"]          * WEIGHT_LOCATION +
-        breakdown["availability"]      * WEIGHT_AVAILABILITY +
-        breakdown["rating"]            * WEIGHT_RATING +
-        breakdown["experience"]        * WEIGHT_EXPERIENCE +
-        breakdown["bio_economic_score"] * WEIGHT_BIO_ECONOMIC
+        breakdown.get("skill_match", 0)       * WEIGHT_SKILL +
+        breakdown.get("location", 0)          * WEIGHT_LOCATION +
+        breakdown.get("availability", 0)      * WEIGHT_AVAILABILITY +
+        breakdown.get("rating", 0)            * WEIGHT_RATING +
+        breakdown.get("experience", 0)        * WEIGHT_EXPERIENCE +
+        fairness_score                        * WEIGHT_BIO_ECONOMIC
     )
     return round(min(100.0, max(0.0, total)), 1)
+

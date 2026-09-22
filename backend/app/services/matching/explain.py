@@ -2,6 +2,7 @@
 Explanation Generator for Worker Matching Recommendations.
 
 Translates component score breakdown into transparent, human-readable bullet points.
+Includes Patent Feature: Cooperative Workload Equity Graph explanations.
 """
 from typing import List
 
@@ -66,3 +67,42 @@ def generate_match_explanation(
         reasons.append(f"Fair bio-economic routing priority (Fatigue Index: {fatigue}%)")
 
     return reasons
+
+
+def generate_equity_explanation(equity_data: dict) -> List[str]:
+    """
+    Patent Feature: Generate human-readable explanations for Equity Graph dimensions.
+
+    Provides cooperative admins with transparent insight into WHY a worker
+    is being given equity-based priority.
+    """
+    reasons = []
+
+    income = equity_data.get("income_parity", 0)
+    if income >= 80:
+        reasons.append(f"⚖️ Income Equity: Worker has earned significantly below cooperative fair-share (Deficit priority: {income}/100)")
+    elif income >= 60:
+        reasons.append(f"⚖️ Income Equity: Moderate earnings gap from target ({income}/100)")
+
+    geographic = equity_data.get("geographic_burden", 0)
+    if geographic >= 80:
+        reasons.append(f"📍 Geographic Equity: Worker has been sent to distant locations recently (Burden: {geographic}/100)")
+    elif geographic >= 60:
+        reasons.append(f"📍 Geographic Equity: Moderate travel burden ({geographic}/100)")
+
+    skill = equity_data.get("skill_utilization", 0)
+    if skill >= 80:
+        reasons.append(f"🔧 Skill Equity: Worker's skill breadth is underutilized (Utilization gap: {skill}/100)")
+
+    temporal = equity_data.get("temporal_fairness", 0)
+    if temporal >= 75:
+        reasons.append(f"🕐 Temporal Equity: Worker has been assigned undesirable time slots ({temporal}/100)")
+
+    fatigue = equity_data.get("fatigue_capacity", 0)
+    if fatigue >= 80:
+        reasons.append(f"💪 High remaining capacity — low recent workload ({fatigue}/100)")
+    elif fatigue <= 30:
+        reasons.append(f"⚠️ Low remaining capacity — approaching fatigue threshold ({fatigue}/100)")
+
+    return reasons
+

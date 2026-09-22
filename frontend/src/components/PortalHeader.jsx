@@ -15,20 +15,17 @@ export default function PortalHeader() {
 
   return (
     <motion.header
-      className="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-40"
-      initial={{ y: -80 }}
-      animate={{ y: 0 }}
+      className="fixed top-4 inset-x-0 mx-auto max-w-7xl z-50 px-4 sm:px-6 lg:px-8"
+      initial={{ y: -80, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      {/* Official Tricolor Top Accent Strip */}
-      <div className="h-1 bg-gradient-to-r from-amber-500 via-slate-200 to-emerald-600" />
-
-      {/* Main Header Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+      {/* Main Header Container - Glassmorphism */}
+      <div className="glass-card flex items-center justify-between px-6 py-3">
         {/* Brand Identity */}
         <Link to="/" className="flex items-center gap-3 text-slate-900 group">
           <motion.div
-            className="w-10 h-10 rounded-lg bg-gradient-to-br from-slate-800 to-slate-900 text-white flex items-center justify-center font-bold text-lg shadow-sm border border-slate-700"
+            className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-bold text-lg shadow-sm"
             whileHover={{ scale: 1.1, rotate: 5 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -36,12 +33,11 @@ export default function PortalHeader() {
           </motion.div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-xl tracking-tight text-slate-900">Sahakar Sathi</span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full border border-slate-300">
-                Cooperative Portal
+              <span className="font-extrabold text-xl tracking-tight text-slate-900 font-sans">Sahakar Sathi</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                Co-op
               </span>
             </div>
-            <p className="text-xs text-slate-500 font-medium">Cooperative Community Services Platform</p>
           </div>
         </Link>
 
@@ -107,7 +103,7 @@ export default function PortalHeader() {
             <div className="flex items-center gap-2">
               <Link to="/login">
                 <motion.button
-                  className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-lg border border-slate-300 transition"
+                  className="px-4 py-2 bg-white/50 hover:bg-white text-slate-800 text-xs font-semibold rounded-full border border-white/60 transition"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                 >
@@ -116,7 +112,7 @@ export default function PortalHeader() {
               </Link>
               <Link to="/register">
                 <motion.button
-                  className="px-3.5 py-1.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white text-xs font-semibold rounded-lg shadow-sm transition"
+                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-full shadow-sm transition"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                 >
@@ -128,7 +124,7 @@ export default function PortalHeader() {
 
           {/* Mobile menu button */}
           <motion.button
-            className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg bg-slate-100 border border-slate-200"
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full bg-white/50 border border-white/60"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             whileTap={{ scale: 0.9 }}
           >

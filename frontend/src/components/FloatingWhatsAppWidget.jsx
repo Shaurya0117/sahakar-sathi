@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 
-export default function FloatingWhatsAppWidget({ phoneNumber = '919999999999', companyName = 'Cooperative Support' }) {
+export default function FloatingWhatsAppWidget({ phoneNumber = '919336751419', companyName = 'Cooperative Support' }) {
   const [isOpen, setIsOpen] = useState(false)
   const [message, setMessage] = useState('')
 

@@ -102,6 +102,11 @@ class WorkerResponse(BaseModel):
     rating: float
     total_jobs: int
 
+    # Patent Feature: Composite Verifiable Trust Score
+    trust_score: Optional[float] = None
+    trust_tier: Optional[str] = None
+    trust_breakdown: Optional[dict] = None
+
     # Computed server-side
     profile_completion: int  # percentage 0–100
 

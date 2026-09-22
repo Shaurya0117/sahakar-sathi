@@ -322,7 +322,11 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
     """
     Worker marks service completed (IN_PROGRESS -> COMPLETED).
     Updates Booking & ServiceRequest to COMPLETED, and atomically increments worker.total_jobs.
-    Now supports Privacy-Preserving Proof of Work (Edge AI).
+    
+    Patent Feature: Privacy-Preserving Proof of Work (Edge AI).
+    When proof_of_work_hash is provided, the system validates the hash,
+    checks uniqueness, and computes verification confidence — all without
+    requiring the actual image to be uploaded.
     """
     worker = db.query(Worker).filter(Worker.user_id == worker_user.id).first()
     if not worker:
@@ -347,6 +351,19 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
         booking.proof_of_work_hash = payload.proof_of_work_hash
         booking.privacy_score = payload.privacy_score
 
+        # Patent Feature: Verify proof-of-work hash
+        if payload.proof_of_work_hash:
+            from app.services.proof_verification import verify_proof_of_work
+            verification = verify_proof_of_work(
+                db=db,
+                booking_id=booking.id,
+                hash_str=payload.proof_of_work_hash,
+                privacy_score=payload.privacy_score,
+            )
+            # Store verification confidence in privacy_score if not already set
+            if payload.privacy_score is None:
+                booking.privacy_score = verification.get("confidence", 0.0)
+
     # Update ServiceRequest to COMPLETED
     req = db.query(ServiceRequest).filter(ServiceRequest.id == booking.request_id).first()
     if req:
@@ -354,6 +371,23 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
 
     # Atomically increment worker.total_jobs to update future fairness score
     worker.total_jobs = (worker.total_jobs or 0) + 1
+
+    # Patent Feature: Hyper-Local Predictive Logistics
+    # Forecasts appliance failures and pre-positions spare parts upon job completion
+    from app.services.predictive_logistics import run_predictive_logistics
+    if req and req.service_name:
+        logistics_result = run_predictive_logistics(
+            db=db, 
+            user_id=req.customer_id, 
+            service_name=req.service_name, 
+            location=req.location
+        )
+        # Store predictive data in booking notes so the UI can display it
+        import json
+        booking.notes = json.dumps({
+            "logistics": logistics_result,
+            "original_notes": booking.notes
+        })
 
     db.commit()
     db.refresh(booking)

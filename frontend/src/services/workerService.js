@@ -43,3 +43,38 @@ export const listAllWorkers = () => api.get('/workers')
  */
 export const updateVerificationStatus = (workerId, status) =>
   api.patch(`/workers/${workerId}/verification`, { status })
+
+/**
+ * Patent Feature: Peer Verification
+ * Get pending verification candidates for peer review.
+ */
+export const getPeerVerificationCandidates = () => api.get('/peer-verification/candidates')
+
+/**
+ * Patent Feature: Peer Verification
+ * Submit a verification vote for a pending candidate.
+ */
+export const submitPeerVote = (candidateId, isPositive) =>
+  api.post('/peer-verification/vote', { candidate_id: candidateId, is_positive: isPositive })
+
+// ── Cooperative Micro-Credit ────────────────────────────────────────────────
+
+/** Check loan eligibility based on trust score tier. */
+export const getMicroCreditEligibility = () => api.get('/microcredit/eligibility')
+
+/** Apply for a micro-loan from the cooperative fund. */
+export const applyMicroLoan = (amount, purpose = 'Salary Advance') =>
+  api.post('/microcredit/apply', { amount, purpose })
+
+/** Get all of the worker's loans. */
+export const getMyLoans = () => api.get('/microcredit/my-loans')
+
+// ── Cooperative Governance ──────────────────────────────────────────────────
+
+/** List all cooperative proposals. */
+export const getGovernanceProposals = () => api.get('/governance/proposals')
+
+/** Cast a vote on a proposal. */
+export const voteOnProposal = (proposalId, vote) =>
+  api.post(`/governance/proposals/${proposalId}/vote`, { vote })
+

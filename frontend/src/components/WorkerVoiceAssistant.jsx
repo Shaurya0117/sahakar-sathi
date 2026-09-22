@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { fuzzyMatchIntent } from '../utils/phoneticMatcher'
 
 export default function WorkerVoiceAssistant({ 
   workerName = 'विशाल यादव',
@@ -53,13 +54,26 @@ export default function WorkerVoiceAssistant({
     }
   }
 
-  // Handle Voice Commands
+  // Helper for haptic feedback
+  const triggerHaptic = (pattern) => {
+    if ('vibrate' in navigator) {
+      navigator.vibrate(pattern)
+    }
+  }
+
+  // Handle Voice Commands (Patent Feature: Fuzzy Phonetic Intent Matching)
   const processCommand = (cmdText) => {
     const text = cmdText.toLowerCase().trim()
     setTranscript(text)
 
+    // Define fuzzy intent targets for different actions
+    const earningsIntents = ['कमाई', 'पैसे', 'रुपये', 'earning', 'balance', 'wallet', 'kamaai', 'kamayee', 'paisa']
+    const jobsIntents = ['काम', 'job', 'नया', 'order', 'kaam', 'naya']
+    const acceptIntents = ['स्वीकार', 'accept', 'हाँ', 'ha', 'yes', 'haan', 'theek', 'karo']
+    const startIntents = ['शुरू', 'start', 'chalu', 'shuru']
+
     // 1. Check Earnings
-    if (text.includes('कमाई') || text.includes('पैसे') || text.includes('रुपये') || text.includes('earning') || text.includes('balance') || text.includes('wallet')) {
+    if (fuzzyMatchIntent(text, earningsIntents)) {
       const reply = isHindi 
         ? `${workerName} जी, आपके वॉलेट में कुल ₹${totalEarnings} हैं, और आपने ${completedJobs.length} काम सफलतापूर्वक पूरे किए हैं।`
         : `${workerName}, your wallet balance is ₹${totalEarnings}, with ${completedJobs.length} completed jobs.`
@@ -69,8 +83,9 @@ export default function WorkerVoiceAssistant({
     }
 
     // 2. Check Jobs
-    if (text.includes('काम') || text.includes('job') || text.includes('नया') || text.includes('order')) {
+    if (fuzzyMatchIntent(text, jobsIntents)) {
       if (assignedJobs.length > 0) {
+        triggerHaptic([100, 50, 100, 50, 100]) // 3 short buzzes for new job
         const first = assignedJobs[0]
         const reply = isHindi 
           ? `आपके पास ${assignedJobs.length} नया काम है: ${first.service_name}। स्थान है ${first.location}। ग्राहक ${first.customer_name} हैं। कुल ₹${first.amount || 499} मिलेंगे। क्या इसे स्वीकार करना है?`
@@ -95,8 +110,9 @@ export default function WorkerVoiceAssistant({
     }
 
     // 3. Accept Job
-    if (text.includes('स्वीकार') || text.includes('accept') || text.includes('हाँ') || text.includes('ha') || text.includes('yes')) {
+    if (fuzzyMatchIntent(text, acceptIntents)) {
       if (assignedJobs.length > 0) {
+        triggerHaptic([300]) // 1 long buzz for acceptance
         const first = assignedJobs[0]
         onAcceptJob && onAcceptJob(first.id)
         const reply = isHindi 
@@ -113,8 +129,9 @@ export default function WorkerVoiceAssistant({
     }
 
     // 4. Start Job
-    if (text.includes('शुरू') || text.includes('start') || text.includes('chalu')) {
+    if (fuzzyMatchIntent(text, startIntents)) {
       if (acceptedJobs.length > 0) {
+        triggerHaptic([100, 100, 300]) // specific buzz for start
         const first = acceptedJobs[0]
         onStartJob && onStartJob(first.id)
         const reply = isHindi 
@@ -131,6 +148,7 @@ export default function WorkerVoiceAssistant({
     }
 
     // Fallback help
+    triggerHaptic([50, 50]) // error buzz
     const reply = isHindi 
       ? `माफ़ कीजिये, मैं समझ नहीं पाया। आप बोल सकते हैं: 'मेरी कमाई बताओ', 'नया काम बताओ', या 'काम स्वीकार करो'।`
       : `Sorry, I did not catch that. You can say: 'check earnings', 'show new jobs', or 'accept job'.`

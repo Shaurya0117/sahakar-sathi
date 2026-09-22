@@ -2,7 +2,7 @@
 
 /* ── Custom CSS variables ───────────────────────────────────────────────────── */
 :root {
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
 }
 
 /* ── Base reset / globals ───────────────────────────────────────────────────── */
@@ -16,8 +16,8 @@ html {
 
 body {
   font-family: var(--font-sans);
-  background-color: #0a0f1a;
-  color: #f1f5f9;
+  background-color: #FDFBF7; /* Cream-50 */
+  color: #052e16; /* Primary-950 */
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
@@ -26,14 +26,14 @@ body {
 
 /* ── Scrollbar styling ──────────────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f1929;
+  background: #FDFBF7;
 }
 ::-webkit-scrollbar-thumb {
-  background: #059669;
-  border-radius: 3px;
+  background: #22c55e;
+  border-radius: 4px;
 }
 
 /* ── Utility animations ─────────────────────────────────────────────────────── */
@@ -50,10 +50,10 @@ body {
 
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
   }
   50% {
-    box-shadow: 0 0 40px rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 40px rgba(34, 197, 94, 0.4);
   }
 }
 
@@ -74,26 +74,28 @@ body {
   animation: float 4s ease-in-out infinite;
 }
 
-/* ── Glassmorphism ──────────────────────────────────────────────────────────── */
+/* ── Light Glassmorphism ──────────────────────────────────────────────────────────── */
 .glass {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.6);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(16, 185, 129, 0.15);
-  border-radius: 1rem;
-  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
 }
 
 .glass-card:hover {
-  border-color: rgba(16, 185, 129, 0.4);
-  background: rgba(255, 255, 255, 0.07);
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3), 0 0 30px rgba(16, 185, 129, 0.1);
+  border-color: rgba(34, 197, 94, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(34, 197, 94, 0.08), 0 0 30px rgba(255, 255, 255, 0.5);
 }

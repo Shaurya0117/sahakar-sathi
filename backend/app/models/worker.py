@@ -100,6 +100,13 @@ class Worker(Base):
     rating: float    = Column(Float, nullable=False, default=0.0)
     total_jobs: int  = Column(Integer, nullable=False, default=0)
 
+    # Patent Feature: Composite Verifiable Trust Score
+    trust_score = Column(Float, nullable=True, default=None)
+    trust_breakdown = Column(_JSON, nullable=True, default=None)
+
+    # Patent Feature: Decentralized Peer Verification
+    peer_votes = Column(_JSON, nullable=True, default=list)
+
     created_at: datetime = Column(
         DateTime(timezone=True),
         server_default=func.now(),

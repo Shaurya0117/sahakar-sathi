@@ -23,10 +23,23 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // ── Restore session from localStorage on first mount ─────────────────────
+  // ── Restore session from storage on first mount ────────────────────────
   useEffect(() => {
-    const storedToken = localStorage.getItem('access_token')
-    const storedUser  = localStorage.getItem('auth_user')
+    // 1. Try to read from sessionStorage first (tab-specific)
+    let storedToken = sessionStorage.getItem('access_token')
+    let storedUser  = sessionStorage.getItem('auth_user')
+
+    // 2. Fallback to localStorage (new tab, or returning user)
+    if (!storedToken || !storedUser) {
+      storedToken = localStorage.getItem('access_token')
+      storedUser  = localStorage.getItem('auth_user')
+
+      // Sync into sessionStorage so this tab is now isolated
+      if (storedToken && storedUser) {
+        sessionStorage.setItem('access_token', storedToken)
+        sessionStorage.setItem('auth_user', storedUser)
+      }
+    }
 
     if (storedToken && storedUser) {
       try {
@@ -34,6 +47,8 @@ export function AuthProvider({ children }) {
         setUser(JSON.parse(storedUser))
       } catch {
         // Corrupt storage — clear it
+        sessionStorage.removeItem('access_token')
+        sessionStorage.removeItem('auth_user')
         localStorage.removeItem('access_token')
         localStorage.removeItem('auth_user')
       }
@@ -46,6 +61,9 @@ export function AuthProvider({ children }) {
     const res = await apiLogin(email, password)
     const { access_token, user: userData } = res.data
 
+    // Save to both (session for this tab, local for new tabs)
+    sessionStorage.setItem('access_token', access_token)
+    sessionStorage.setItem('auth_user', JSON.stringify(userData))
     localStorage.setItem('access_token', access_token)
     localStorage.setItem('auth_user', JSON.stringify(userData))
 
@@ -57,6 +75,8 @@ export function AuthProvider({ children }) {
 
   // ── Logout ────────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
+    sessionStorage.removeItem('access_token')
+    sessionStorage.removeItem('auth_user')
     localStorage.removeItem('access_token')
     localStorage.removeItem('auth_user')
     setToken(null)

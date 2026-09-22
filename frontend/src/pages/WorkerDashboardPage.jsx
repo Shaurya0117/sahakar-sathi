@@ -22,10 +22,20 @@ import {
   rejectJob,
   startJob,
 } from '../services/bookingService'
-import { createWorkerProfile, updateWorkerProfile } from '../services/workerService'
+import {
+  createWorkerProfile,
+  updateWorkerProfile,
+  getPeerVerificationCandidates,
+  submitPeerVote,
+  getMicroCreditEligibility,
+  applyMicroLoan,
+  getGovernanceProposals,
+  voteOnProposal,
+} from '../services/workerService'
 import { useLanguage } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 import WorkerVoiceAssistant from '../components/WorkerVoiceAssistant'
+import ProofOfWorkCapture from '../components/ProofOfWorkCapture'
 
 const PRESET_SKILLS = [
   'Wiring', 'Fan Repair', 'Switch Repair', 'Plumbing',
@@ -50,6 +60,17 @@ export default function WorkerDashboardPage() {
   const [isDictating, setIsDictating] = useState(null) // holds job id
   const [jobNotes, setJobNotes] = useState({}) // { jobId: 'note' }
 
+  const [peerCandidates, setPeerCandidates] = useState([])
+  const [peerCandidatesLoading, setPeerCandidatesLoading] = useState(false)
+
+  // Micro-Credit state
+  const [creditData, setCreditData] = useState(null)
+  const [loanAmount, setLoanAmount] = useState('')
+  const [applyingLoan, setApplyingLoan] = useState(false)
+
+  // Governance state
+  const [proposals, setProposals] = useState([])
+
   const fetchWorkerJobs = useCallback(async () => {
     setJobsLoading(true)
     try {
@@ -62,72 +83,109 @@ export default function WorkerDashboardPage() {
     }
   }, [])
 
+  const fetchPeerCandidates = useCallback(async () => {
+    if (profile?.trust_score >= 70) {
+      setPeerCandidatesLoading(true)
+      try {
+        const res = await getPeerVerificationCandidates()
+        setPeerCandidates(res.data || [])
+      } catch {
+        // Ignore
+      } finally {
+        setPeerCandidatesLoading(false)
+      }
+    }
+  }, [profile?.trust_score])
+
+  const fetchCreditEligibility = useCallback(async () => {
+    try {
+      const res = await getMicroCreditEligibility()
+      setCreditData(res.data)
+    } catch { /* ignore */ }
+  }, [])
+
+  const fetchProposals = useCallback(async () => {
+    try {
+      const res = await getGovernanceProposals()
+      setProposals(res.data || [])
+    } catch { /* ignore */ }
+  }, [])
+
   useEffect(() => {
-    if (hasProfile) fetchWorkerJobs()
-  }, [hasProfile, fetchWorkerJobs])
+    if (hasProfile) {
+      fetchWorkerJobs()
+      fetchPeerCandidates()
+      fetchCreditEligibility()
+      fetchProposals()
+    }
+  }, [hasProfile, fetchWorkerJobs, fetchPeerCandidates, fetchCreditEligibility, fetchProposals])
+
+  const handleVote = async (candidateId, isPositive) => {
+    try {
+      await submitPeerVote(candidateId, isPositive)
+      toast.success(isPositive ? 'You vouched for this worker.' : 'You voted against verifying this worker.')
+      fetchPeerCandidates()
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to submit vote.')
+    }
+  }
+
+  const triggerHaptic = (pattern) => {
+    if ('vibrate' in navigator) navigator.vibrate(pattern)
+  }
 
   const handleAcceptJob = async (bookingId) => {
     try {
+      triggerHaptic([300]) // 1 long buzz
       await acceptJob(bookingId)
       setSuccessMsg('Job accepted successfully!')
       await fetchWorkerJobs()
     } catch (err) {
+      triggerHaptic([50, 50])
       setError(err.response?.data?.detail || 'Failed to accept job.')
     }
   }
 
   const handleRejectJob = async (bookingId) => {
     try {
+      triggerHaptic([100, 100]) // 2 medium buzzes
       await rejectJob(bookingId)
       setSuccessMsg('Job rejected. The request has been returned to cooperative pending status.')
       await fetchWorkerJobs()
     } catch (err) {
+      triggerHaptic([50, 50])
       setError(err.response?.data?.detail || 'Failed to reject job.')
     }
   }
 
   const handleStartJob = async (bookingId) => {
     try {
+      triggerHaptic([100, 100, 300]) // start sequence
       await startJob(bookingId)
       setSuccessMsg('Service started! Job is now In Progress.')
       await fetchWorkerJobs()
     } catch (err) {
+      triggerHaptic([50, 50])
       setError(err.response?.data?.detail || 'Failed to start service.')
     }
   }
 
   const [edgeAiModalJobId, setEdgeAiModalJobId] = useState(null)
-  const [edgeSimulating, setEdgeSimulating] = useState(false)
-  const [edgeProgress, setEdgeProgress] = useState(0)
+  const [edgeJobServiceName, setEdgeJobServiceName] = useState('')
 
   const initiateProofOfWork = (bookingId) => {
+    const job = jobs.find(j => j.id === bookingId)
+    setEdgeJobServiceName(job?.service_name || 'Service')
     setEdgeAiModalJobId(bookingId)
-    setEdgeSimulating(true)
-    setEdgeProgress(0)
-    
-    let prog = 0
-    const interval = setInterval(() => {
-      prog += Math.random() * 20
-      if (prog >= 100) {
-        clearInterval(interval)
-        setEdgeProgress(100)
-        setTimeout(() => {
-          setEdgeSimulating(false)
-        }, 800)
-      } else {
-        setEdgeProgress(prog)
-      }
-    }, 300)
   }
 
-  const submitProofOfWork = async () => {
+  const handleProofCaptured = async (proofData) => {
     try {
-      const hash = "0x" + Math.random().toString(16).substr(2, 10) + "a8f"
       await completeJob(edgeAiModalJobId, {
-        proof_of_work_hash: hash,
-        privacy_score: 98.5
+        proof_of_work_hash: proofData.proof_of_work_hash,
+        privacy_score: proofData.privacy_score
       })
-      setSuccessMsg('Service completed successfully with Proof of Work!')
+      setSuccessMsg('Service completed successfully with Privacy-Preserving Proof of Work!')
       setEdgeAiModalJobId(null)
       await fetchWorkerJobs()
       await refresh()
@@ -187,7 +245,7 @@ export default function WorkerDashboardPage() {
   }
 
   const handleWhatsApp = (job) => {
-    const phone = job.customer_phone || '919999999999'
+    const phone = job.customer_phone || '919336751419'
     const msg = `Hello ${job.customer_name}, I am your cooperative service worker for the ${job.service_name} job scheduled on ${job.scheduled_date}.`
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank')
   }
@@ -713,44 +771,72 @@ export default function WorkerDashboardPage() {
                 </motion.div>
               )}
             </motion.div>
+
+            {/* Peer Verification Section (Only for High Trust Workers) */}
+            {profile.trust_score >= 70 && (
+              <motion.div variants={fadeInUp} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                      <span className="text-xl">🤝</span> Peer Verification Requests
+                    </h2>
+                    <p className="text-xs text-slate-500">As a highly trusted member, you can vouch for new workers.</p>
+                  </div>
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                    {peerCandidates?.length || 0} Pending
+                  </span>
+                </div>
+
+                {peerCandidatesLoading ? (
+                  <div className="py-4 text-center text-xs text-slate-500">Loading candidates...</div>
+                ) : !peerCandidates || peerCandidates.length === 0 ? (
+                  <div className="p-4 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-slate-200">
+                    No pending workers require verification right now.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {peerCandidates.map(candidate => (
+                      <div key={candidate.worker_id} className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+                        <div>
+                          <p className="font-bold text-slate-900 text-sm">{candidate.name}</p>
+                          <p className="text-xs text-slate-500">{candidate.profession} • {candidate.experience_years}y exp</p>
+                          <div className="mt-2 text-[10px] text-slate-400 font-mono">
+                            Consensus: {candidate.consensus_score}% ({candidate.total_votes} votes)
+                          </div>
+                        </div>
+                        {candidate.has_voted ? (
+                          <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-100">
+                            ✓ Vote Recorded
+                          </span>
+                        ) : (
+                          <div className="flex gap-2">
+                            <MotionButton onClick={() => handleVote(candidate.worker_id, false)} className="px-3 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 text-xs font-bold rounded-lg transition-colors cursor-pointer">
+                              Reject
+                            </MotionButton>
+                            <MotionButton onClick={() => handleVote(candidate.worker_id, true)} className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 text-xs font-bold rounded-lg transition-colors cursor-pointer">
+                              Vouch
+                            </MotionButton>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
           </motion.div>
         )}
       </main>
 
       {edgeAiModalJobId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl relative overflow-hidden">
-            <h3 className="text-lg font-black text-slate-900 mb-2">Edge Sensor Verification</h3>
-            <p className="text-xs text-slate-500 mb-4">Cryptographically verifying physical labor using on-device sensor fusion (Audio/Motion) without uploading raw media to the cloud.</p>
-            
-            <div className="bg-slate-100 rounded-xl h-4 mb-4 overflow-hidden relative">
-              <div className="bg-blue-600 h-full transition-all duration-300" style={{ width: `${edgeProgress}%` }} />
-            </div>
-            
-            <div className="text-[10px] font-mono text-slate-400 mb-6 bg-slate-50 p-2 rounded border border-slate-200">
-              <div className={edgeProgress > 20 ? "text-emerald-600" : ""}>{edgeProgress > 20 ? "[OK]" : "[..]"} Sampling audio frequencies...</div>
-              <div className={edgeProgress > 50 ? "text-emerald-600" : ""}>{edgeProgress > 50 ? "[OK]" : "[..]"} Analyzing accelerometer movement...</div>
-              <div className={edgeProgress > 80 ? "text-emerald-600" : ""}>{edgeProgress > 80 ? "[OK]" : "[..]"} Generating Zero-Knowledge Proof Hash...</div>
-            </div>
-
-            <div className="mb-6 p-3 bg-rose-50 border border-rose-100 rounded-xl">
-              <div className="flex items-start gap-2">
-                <span className="text-rose-500 mt-0.5">⚠️</span>
-                <div>
-                  <h4 className="text-xs font-bold text-rose-900">Dispute Fallback (Optional)</h4>
-                  <p className="text-[9px] text-rose-700 mt-1 mb-2">If you anticipate a customer dispute, you may upload a photo. It is stored securely for arbitration and auto-deleted in 48 hours to preserve privacy.</p>
-                  <label className="text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 px-3 py-1.5 rounded cursor-pointer inline-block">
-                    📸 Upload Dispute Photo
-                    <input type="file" className="hidden" accept="image/*" />
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button disabled={edgeSimulating} onClick={() => setEdgeAiModalJobId(null)} className="flex-1 py-2 rounded-xl text-slate-600 font-bold bg-slate-100 hover:bg-slate-200 text-sm disabled:opacity-50">Cancel</button>
-              <button disabled={edgeSimulating || edgeProgress < 100} onClick={submitProofOfWork} className="flex-1 py-2 rounded-xl text-white font-bold bg-blue-600 hover:bg-blue-700 text-sm disabled:opacity-50">Confirm Work</button>
-            </div>
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md w-full">
+            <ProofOfWorkCapture
+              serviceName={edgeJobServiceName}
+              onProofCaptured={handleProofCaptured}
+              onCancel={() => setEdgeAiModalJobId(null)}
+            />
           </motion.div>
         </div>
       )}
@@ -762,6 +848,181 @@ export default function WorkerDashboardPage() {
         onAcceptJob={handleAcceptJob} 
         onStartJob={handleStartJob} 
       />
+
+      {/* ── Cooperative Micro-Credit System ─────────────────────────── */}
+      {hasProfile && creditData && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-auto max-w-5xl px-4 mt-8"
+        >
+          <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-xl">🏦</div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-lg">Cooperative Micro-Credit</h3>
+                <p className="text-xs text-slate-500 font-medium">Salary advances for trusted cooperative members</p>
+              </div>
+              <span className={`ml-auto px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                creditData.eligible ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+              }`}>
+                {creditData.trust_tier} Tier
+              </span>
+            </div>
+
+            {creditData.active_loan ? (
+              <div className="bg-white rounded-xl p-4 border border-amber-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-bold text-slate-800">Active Loan: ₹{creditData.active_loan.amount}</span>
+                  <span className="text-xs font-bold text-amber-600">₹{creditData.active_loan.remaining} remaining</span>
+                </div>
+                <div className="w-full bg-amber-100 rounded-full h-2.5 overflow-hidden">
+                  <div className="bg-gradient-to-r from-amber-400 to-emerald-500 h-full rounded-full transition-all" style={{ width: `${creditData.active_loan.progress_pct}%` }}></div>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1.5 font-medium">
+                  {creditData.active_loan.progress_pct}% repaid • 20% auto-deducted per completed job
+                </p>
+              </div>
+            ) : creditData.eligible ? (
+              <div className="bg-white rounded-xl p-4 border border-amber-100">
+                <p className="text-xs text-slate-600 mb-3 font-medium">
+                  As a <strong className="text-amber-700">{creditData.trust_tier}</strong> member, you can borrow up to <strong className="text-slate-900">₹{creditData.max_loan_amount}</strong> from the cooperative fund.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={loanAmount}
+                    onChange={(e) => setLoanAmount(e.target.value)}
+                    placeholder={`Enter amount (max ₹${creditData.max_loan_amount})`}
+                    className="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                  />
+                  <button
+                    disabled={applyingLoan || !loanAmount}
+                    onClick={async () => {
+                      setApplyingLoan(true)
+                      try {
+                        const res = await applyMicroLoan(parseFloat(loanAmount))
+                        toast.success(res.data.message)
+                        setLoanAmount('')
+                        fetchCreditEligibility()
+                      } catch (err) {
+                        toast.error(err.response?.data?.detail || 'Loan application failed.')
+                      } finally {
+                        setApplyingLoan(false)
+                      }
+                    }}
+                    className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-md shadow-amber-200 disabled:opacity-50 transition cursor-pointer"
+                  >
+                    {applyingLoan ? 'Applying...' : '💰 Apply'}
+                  </button>
+                </div>
+                <p className="text-[9px] text-amber-600 mt-2 font-medium">20% will be auto-deducted from each completed job until repaid.</p>
+              </div>
+            ) : (
+              <div className="bg-white/60 rounded-xl p-4 border border-amber-100 text-center">
+                <p className="text-xs text-slate-500 font-medium">
+                  {creditData.has_active_loan
+                    ? 'You have an active loan. Repay it first to apply for a new one.'
+                    : `Micro-credit requires SILVER tier or above (Trust Score 60+). Your current score: ${creditData.trust_score}`
+                  }
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Cooperative Democratic Governance ───────────────────────── */}
+      {hasProfile && proposals.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-auto max-w-5xl px-4 mt-8 mb-8"
+        >
+          <div className="bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-xl">🗳️</div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-lg">Cooperative Governance</h3>
+                <p className="text-xs text-slate-500 font-medium">Your voice matters — vote on cooperative decisions</p>
+              </div>
+              <span className="ml-auto px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-700">
+                {proposals.length} Proposal{proposals.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {proposals.map(p => (
+                <div key={p.id} className="bg-white rounded-xl p-4 border border-indigo-100">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          p.status === 'ACTIVE' ? 'bg-indigo-100 text-indigo-700' :
+                          p.status === 'PASSED' ? 'bg-emerald-100 text-emerald-700' :
+                          'bg-rose-100 text-rose-700'
+                        }`}>{p.status}</span>
+                        <span className="text-[9px] text-slate-400 font-medium">{p.category}</span>
+                      </div>
+                      <h4 className="font-bold text-slate-900 text-sm">{p.title}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{p.description}</p>
+                    </div>
+                  </div>
+
+                  {/* Vote Progress Bar */}
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-[10px] font-bold mb-1">
+                      <span className="text-emerald-600">✓ Yes: {p.yes_votes} ({p.approval_pct}%)</span>
+                      <span className="text-rose-500">✗ No: {p.no_votes}</span>
+                      <span className="text-slate-400">{p.total_votes} votes</span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                      <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full transition-all" style={{ width: `${p.approval_pct}%` }}></div>
+                    </div>
+                    {p.result_hash && (
+                      <p className="text-[8px] text-slate-400 mt-1 font-mono">Tamper-proof hash: {p.result_hash.substring(0, 24)}...</p>
+                    )}
+                  </div>
+
+                  {/* Vote Buttons */}
+                  {p.status === 'ACTIVE' && (
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await voteOnProposal(p.id, 'YES')
+                            toast.success(res.data.message)
+                            fetchProposals()
+                          } catch (err) {
+                            toast.error(err.response?.data?.detail || 'Vote failed.')
+                          }
+                        }}
+                        className="flex-1 py-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 font-bold text-xs rounded-xl transition cursor-pointer"
+                      >
+                        👍 Vote Yes
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await voteOnProposal(p.id, 'NO')
+                            toast.success(res.data.message)
+                            fetchProposals()
+                          } catch (err) {
+                            toast.error(err.response?.data?.detail || 'Vote failed.')
+                          }
+                        }}
+                        className="flex-1 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-600 font-bold text-xs rounded-xl transition cursor-pointer"
+                      >
+                        👎 Vote No
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       <Footer />
     </AnimatedPage>
