@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 
 export default function PortalHeader() {
   const { user, logout } = useAuth()
+  const { language, setLanguage } = useLanguage()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
@@ -89,6 +91,17 @@ export default function PortalHeader() {
 
         {/* User Account Section */}
         <div className="flex items-center gap-3">
+          {/* Language Switcher */}
+          <select 
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="hidden sm:block px-2 py-1.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+          >
+            <option value="en">A/अ English</option>
+            <option value="hi">A/अ हिंदी</option>
+            <option value="mr">A/अ मराठी</option>
+          </select>
+
           {user ? (
             <div className="flex items-center gap-3">
               <div className="hidden sm:block text-right">
