@@ -350,7 +350,7 @@ Thank you for choosing the Cooperative!
     <AnimatedPage className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <PortalHeader />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 flex-1 w-full space-y-8">
 
         {/* ── Welcome Header ─────────────────────────────────────── */}
         <motion.div

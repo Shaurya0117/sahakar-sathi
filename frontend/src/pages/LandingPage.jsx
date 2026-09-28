@@ -163,7 +163,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── Service Categories Section ─────────────────────────────── */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 flex-1 w-full space-y-24">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-20 flex-1 w-full space-y-24">
         <ScrollReveal direction="up">
           <div className="flex flex-col items-center text-center mb-12">
             <h2 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Our Services</h2>
