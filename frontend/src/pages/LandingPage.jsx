@@ -83,7 +83,7 @@ export default function LandingPage() {
               transition={{ delay: 0.5, duration: 0.6 }}
             >
               <Link to="/customer">
-                <MotionButton className="w-full sm:w-auto px-8 py-4 bg-primary-600 hover:bg-primary-700 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
+                <MotionButton className="w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
                   Book a Service <span className="text-xl">→</span>
                 </MotionButton>
               </Link>
