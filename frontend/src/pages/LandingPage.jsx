@@ -205,22 +205,22 @@ export default function LandingPage() {
         {/* ── Multi-Channel Booking Section ─────────────────────────── */}
         {/* ── Multi-Channel Booking Section ─────────────────────────── */}
         <ScrollReveal direction="up" delay={0.1}>
-          <div className="bg-primary-950 rounded-[3rem] p-10 sm:p-16 shadow-2xl relative overflow-hidden">
+          <div className="bg-slate-900 rounded-[3rem] p-10 sm:p-16 shadow-2xl relative overflow-hidden">
             <motion.div
-              className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-primary-700 rounded-full blur-3xl opacity-30 pointer-events-none"
+              className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-emerald-700 rounded-full blur-3xl opacity-30 pointer-events-none"
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
             />
             <motion.div
-              className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-accent-600 rounded-full blur-3xl opacity-20 pointer-events-none"
+              className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-blue-600 rounded-full blur-3xl opacity-20 pointer-events-none"
               animate={{ scale: [1, 1.3, 1] }}
               transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
             />
 
             <ScrollReveal direction="down" className="text-center max-w-2xl mx-auto space-y-4 mb-16 relative z-10">
-              <span className="text-accent-400 font-bold tracking-widest uppercase text-sm">Inclusive Technology</span>
+              <span className="text-amber-400 font-bold tracking-widest uppercase text-sm">Inclusive Technology</span>
               <h2 className="text-4xl font-extrabold text-white">Book Anywhere, Anytime</h2>
-              <p className="text-base text-primary-100 font-light">
+              <p className="text-base text-slate-300 font-light">
                 Sahakar Sathi supports three convenient channels for booking household & community service workers. No app installation required.
               </p>
             </ScrollReveal>
@@ -240,17 +240,17 @@ export default function LandingPage() {
               >
                 <div className="space-y-5 text-center">
                   <FloatingElement amplitude={5} delay={0}>
-                    <div className="w-16 h-16 mx-auto rounded-full bg-white/20 text-white text-3xl flex items-center justify-center font-bold border border-white/30 group-hover:bg-white group-hover:text-primary-900 transition-all duration-300">
+                    <div className="w-16 h-16 mx-auto rounded-full bg-white/20 text-white text-3xl flex items-center justify-center font-bold border border-white/30 group-hover:bg-white group-hover:text-slate-900 transition-all duration-300">
                       🌐
                     </div>
                   </FloatingElement>
                   <h3 className="font-bold text-white text-xl">Website Portal</h3>
-                  <p className="text-sm text-primary-100/80 leading-relaxed font-light">
+                  <p className="text-sm text-slate-300 leading-relaxed font-light">
                     Browse catalog, select dates, use GPS, and manage active service requests online.
                   </p>
                 </div>
                 <Link to="/customer">
-                  <MotionButton className="w-full text-center py-3 px-4 bg-white hover:bg-cream-50 text-primary-900 font-bold text-sm rounded-xl transition shadow-lg">
+                  <MotionButton className="w-full text-center py-3 px-4 bg-white hover:bg-slate-50 text-slate-900 font-bold text-sm rounded-xl transition shadow-lg">
                     Request Online ➔
                   </MotionButton>
                 </Link>
@@ -260,21 +260,21 @@ export default function LandingPage() {
               <motion.div
                 variants={fadeInUp}
                 whileHover={{ y: -8, scale: 1.02 }}
-                className="bg-accent-600/20 backdrop-blur-xl p-8 rounded-3xl border border-accent-400/30 shadow-xl flex flex-col justify-between space-y-8 group"
+                className="bg-emerald-600/20 backdrop-blur-xl p-8 rounded-3xl border border-emerald-400/30 shadow-xl flex flex-col justify-between space-y-8 group"
               >
                 <div className="space-y-5 text-center">
                   <FloatingElement amplitude={5} delay={0.5}>
-                    <div className="w-16 h-16 mx-auto rounded-full bg-accent-500/30 text-accent-100 text-3xl flex items-center justify-center font-bold border border-accent-400/50 group-hover:bg-accent-500 group-hover:text-white transition-all duration-300">
+                    <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/30 text-emerald-100 text-3xl flex items-center justify-center font-bold border border-emerald-400/50 group-hover:bg-emerald-500 group-hover:text-white transition-all duration-300">
                       💬
                     </div>
                   </FloatingElement>
                   <h3 className="font-bold text-white text-xl">WhatsApp Bot</h3>
-                  <p className="text-sm text-accent-100/80 leading-relaxed font-light">
+                  <p className="text-sm text-emerald-100/80 leading-relaxed font-light">
                     Send a text or drop a location pin on WhatsApp. Interactive assistant guides you through.
                   </p>
                 </div>
                 <a href="https://wa.me/919876543210?text=Hi" target="_blank" rel="noreferrer">
-                  <MotionButton className="w-full text-center py-3 px-4 bg-accent-500 hover:bg-accent-600 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-accent-500/30">
+                  <MotionButton className="w-full text-center py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-emerald-500/30">
                     Message on WhatsApp
                   </MotionButton>
                 </a>
