@@ -107,6 +107,14 @@ class Worker(Base):
     # Patent Feature: Decentralized Peer Verification
     peer_votes = Column(_JSON, nullable=True, default=list)
 
+    # India Stack & Government Benefits
+    eshram_uan = Column(String(50), nullable=True)
+    digilocker_verified = Column(Integer, default=0) # Boolean mapped to Integer (0/1) for SQLite
+    government_benefits_linked = Column(_JSON, nullable=True, default=list)
+
+    # Co-op Time Banking
+    time_credits = Column(Float, default=0.0)
+
     created_at: datetime = Column(
         DateTime(timezone=True),
         server_default=func.now(),

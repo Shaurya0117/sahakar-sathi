@@ -78,3 +78,19 @@ export const getGovernanceProposals = () => api.get('/governance/proposals')
 export const voteOnProposal = (proposalId, vote) =>
   api.post(`/governance/proposals/${proposalId}/vote`, { vote })
 
+// ── India Stack & DigiLocker ────────────────────────────────────────────────
+
+/** Verify worker via e-Shram UAN. */
+export const verifyEshramUAN = (uan_number) =>
+  api.post('/india-stack/verify-eshram', { uan_number })
+
+// ── Co-op Time Banking ──────────────────────────────────────────────────────
+
+/** Get time bank balance and history. */
+export const getTimeBankHistory = () => api.get('/timebank/history')
+
+/** Transfer time credits to another worker. */
+export const transferTimeCredits = (receiverId, amount, description) =>
+  api.post('/timebank/transfer', { receiver_id: receiverId, amount, description })
+
+

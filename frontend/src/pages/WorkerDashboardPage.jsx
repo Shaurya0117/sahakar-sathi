@@ -31,6 +31,9 @@ import {
   applyMicroLoan,
   getGovernanceProposals,
   voteOnProposal,
+  verifyEshramUAN,
+  getTimeBankHistory,
+  transferTimeCredits
 } from '../services/workerService'
 import { useLanguage } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
@@ -70,6 +73,15 @@ export default function WorkerDashboardPage() {
 
   // Governance state
   const [proposals, setProposals] = useState([])
+
+  // India Stack State
+  const [uanNumber, setUanNumber] = useState('')
+  const [verifyingUan, setVerifyingUan] = useState(false)
+
+  // Time Bank State
+  const [timeBank, setTimeBank] = useState({ balance: 0, history: [] })
+  const [transferForm, setTransferForm] = useState({ receiverId: '', amount: '', description: '' })
+  const [transferring, setTransferring] = useState(false)
 
   const fetchWorkerJobs = useCallback(async () => {
     setJobsLoading(true)
@@ -111,14 +123,22 @@ export default function WorkerDashboardPage() {
     } catch { /* ignore */ }
   }, [])
 
+  const fetchTimeBank = useCallback(async () => {
+    try {
+      const res = await getTimeBankHistory()
+      setTimeBank(res.data)
+    } catch { /* ignore */ }
+  }, [])
+
   useEffect(() => {
     if (hasProfile) {
       fetchWorkerJobs()
       fetchPeerCandidates()
       fetchCreditEligibility()
       fetchProposals()
+      fetchTimeBank()
     }
-  }, [hasProfile, fetchWorkerJobs, fetchPeerCandidates, fetchCreditEligibility, fetchProposals])
+  }, [hasProfile, fetchWorkerJobs, fetchPeerCandidates, fetchCreditEligibility, fetchProposals, fetchTimeBank])
 
   const handleVote = async (candidateId, isPositive) => {
     try {
@@ -1019,6 +1039,191 @@ export default function WorkerDashboardPage() {
                   )}
                 </div>
               ))}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── India Stack & DigiLocker Integration ────────────────────── */}
+      {hasProfile && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-auto max-w-5xl px-4 mt-8"
+        >
+          <div className={`border rounded-2xl p-6 shadow-sm ${profile?.digilocker_verified ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-200' : 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200'}`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${profile?.digilocker_verified ? 'bg-emerald-100' : 'bg-blue-100'}`}>
+                🇮🇳
+              </div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-lg">India Stack Identity</h3>
+                <p className="text-xs text-slate-500 font-medium">Verify via e-Shram / DigiLocker to access government benefits</p>
+              </div>
+              <span className={`ml-auto px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                profile?.digilocker_verified ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'
+              }`}>
+                {profile?.digilocker_verified ? '✓ Verified' : 'Unverified'}
+              </span>
+            </div>
+
+            {profile?.digilocker_verified ? (
+              <div className="bg-white rounded-xl p-4 border border-emerald-100">
+                <p className="text-xs font-bold text-emerald-800 mb-2">Verified e-Shram UAN: {profile.eshram_uan}</p>
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Linked Government Benefits:</p>
+                  {profile.government_benefits_linked?.map((benefit, i) => (
+                    <div key={i} className="flex items-center gap-2 text-xs font-medium text-slate-700 bg-emerald-50/50 px-3 py-2 rounded-lg border border-emerald-100/50">
+                      <span className="text-emerald-500">✓</span> {benefit}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-white rounded-xl p-4 border border-blue-100">
+                <p className="text-xs text-slate-600 mb-3 font-medium">
+                  Enter your 12-digit e-Shram UAN to instantly verify your profile and link your account to government social security schemes.
+                </p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={uanNumber}
+                    onChange={(e) => setUanNumber(e.target.value)}
+                    placeholder="Enter 12-digit UAN"
+                    className="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  />
+                  <button
+                    disabled={verifyingUan || uanNumber.length < 12}
+                    onClick={async () => {
+                      setVerifyingUan(true)
+                      try {
+                        const res = await verifyEshramUAN(uanNumber)
+                        toast.success(res.data.message)
+                        window.location.reload()
+                      } catch (err) {
+                        toast.error(err.response?.data?.detail || 'Verification failed.')
+                      } finally {
+                        setVerifyingUan(false)
+                      }
+                    }}
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-200 disabled:opacity-50 transition cursor-pointer"
+                  >
+                    {verifyingUan ? 'Verifying...' : 'Verify Identity'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
+
+      {/* ── Co-op Time Bank (Cashless Barter) ────────────────────────── */}
+      {hasProfile && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-auto max-w-5xl px-4 mt-8 mb-8"
+        >
+          <div className="bg-gradient-to-br from-fuchsia-50 to-pink-50 border border-fuchsia-200 rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-fuchsia-100 flex items-center justify-center text-xl">⏳</div>
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-lg">Co-op Time Bank</h3>
+                <p className="text-xs text-slate-500 font-medium">Cashless barter economy. Earn 1 credit per job completed.</p>
+              </div>
+              <div className="ml-auto flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-fuchsia-100 shadow-sm">
+                <span className="text-[10px] font-black uppercase text-slate-400">Balance:</span>
+                <span className="text-xl font-black text-fuchsia-600">{timeBank.balance} <span className="text-sm font-bold text-fuchsia-400">hrs</span></span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Transfer Form */}
+              <div className="bg-white rounded-xl p-4 border border-fuchsia-100">
+                <h4 className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider">Transfer Credits</h4>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <input
+                      type="number"
+                      placeholder="Receiver ID"
+                      value={transferForm.receiverId}
+                      onChange={e => setTransferForm({...transferForm, receiverId: e.target.value})}
+                      className="w-1/3 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:border-fuchsia-400"
+                    />
+                    <input
+                      type="number"
+                      placeholder="Amount"
+                      value={transferForm.amount}
+                      onChange={e => setTransferForm({...transferForm, amount: e.target.value})}
+                      className="w-1/3 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:border-fuchsia-400"
+                    />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="What was this for? (e.g. Fixed my sink)"
+                    value={transferForm.description}
+                    onChange={e => setTransferForm({...transferForm, description: e.target.value})}
+                    className="w-full px-3 py-2 text-sm border rounded-lg focus:outline-none focus:border-fuchsia-400"
+                  />
+                  <button
+                    disabled={transferring || !transferForm.receiverId || !transferForm.amount || !transferForm.description}
+                    onClick={async () => {
+                      setTransferring(true)
+                      try {
+                        const res = await transferTimeCredits(
+                          parseInt(transferForm.receiverId),
+                          parseFloat(transferForm.amount),
+                          transferForm.description
+                        )
+                        toast.success(res.data.message)
+                        setTransferForm({ receiverId: '', amount: '', description: '' })
+                        fetchTimeBank()
+                      } catch (err) {
+                        toast.error(err.response?.data?.detail || 'Transfer failed.')
+                      } finally {
+                        setTransferring(false)
+                      }
+                    }}
+                    className="w-full py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold text-xs rounded-xl shadow-sm disabled:opacity-50 transition cursor-pointer"
+                  >
+                    {transferring ? 'Sending...' : 'Send Time Credits'}
+                  </button>
+                </div>
+              </div>
+
+              {/* History */}
+              <div className="bg-white rounded-xl p-4 border border-fuchsia-100 h-64 overflow-y-auto">
+                <h4 className="text-xs font-bold text-slate-800 mb-3 uppercase tracking-wider">Transaction History</h4>
+                {timeBank.history.length === 0 ? (
+                  <p className="text-xs text-slate-400 text-center mt-8 font-medium">No transactions yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {timeBank.history.map(txn => (
+                      <div key={txn.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                              txn.type === 'EARNED' ? 'bg-emerald-100 text-emerald-700' :
+                              txn.type === 'RECEIVED' ? 'bg-blue-100 text-blue-700' :
+                              'bg-rose-100 text-rose-700'
+                            }`}>{txn.type}</span>
+                            <span className="text-[10px] font-medium text-slate-500">
+                              {new Date(txn.timestamp).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-xs font-bold text-slate-700 mt-1">{txn.description}</p>
+                          {txn.counterparty && (
+                            <p className="text-[9px] text-slate-400">Worker ID: {txn.counterparty}</p>
+                          )}
+                        </div>
+                        <span className={`font-black ${txn.type === 'SENT' ? 'text-rose-500' : 'text-emerald-500'}`}>
+                          {txn.type === 'SENT' ? '-' : '+'}{txn.amount}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>

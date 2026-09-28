@@ -36,6 +36,13 @@ api_router.include_router(trust_router, prefix="/api")
 api_router.include_router(peer_router, prefix="/api")
 api_router.include_router(microcredit_router, prefix="/api")
 api_router.include_router(governance_router, prefix="/api")
+
+from app.routes.india_stack import router as india_stack_router
+from app.routes.timebank import router as timebank_router
+
+api_router.include_router(india_stack_router, prefix="/api")
+api_router.include_router(timebank_router, prefix="/api")
+
 api_router.include_router(whatsapp_router, prefix="/api")
 api_router.include_router(voice_router, prefix="/api")
 

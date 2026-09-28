@@ -389,6 +389,10 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
             "original_notes": booking.notes
         })
 
+    # Co-op Time Banking: Award 1 time credit to the worker for completing the job
+    from app.services.timebank import award_time_credit
+    award_time_credit(db, worker.id, 1.0, f"Completed job #{booking.id}")
+
     db.commit()
     db.refresh(booking)
     return build_booking_response(db, booking)
