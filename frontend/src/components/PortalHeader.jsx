@@ -25,11 +25,16 @@ export default function PortalHeader() {
         {/* Brand Identity */}
         <Link to="/" className="flex items-center gap-3 text-slate-900 group">
           <motion.div
-            className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-bold text-lg shadow-sm"
+            className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-bold shadow-md"
             whileHover={{ scale: 1.1, rotate: 5 }}
             whileTap={{ scale: 0.95 }}
           >
-            🤝
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
           </motion.div>
           <div>
             <div className="flex items-center gap-2">
