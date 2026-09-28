@@ -881,6 +881,8 @@ export default function WorkerDashboardPage() {
                 )}
               </motion.div>
             )}
+              </>
+            )}
 
           </motion.div>
         )}
