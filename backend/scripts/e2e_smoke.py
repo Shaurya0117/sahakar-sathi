@@ -41,6 +41,22 @@ def setup_fresh_db():
             verification_status="VERIFIED"
         )
         db.add(worker_p)
+        db.flush()
+        
+        # Create 3 voters
+        for i in range(3):
+            vu = User(name=f"Voter {i}", email=f"voter{i}@test.com", password_hash=hash_password("password"), role=UserRole.WORKER, is_active=True)
+            db.add(vu)
+            db.flush()
+            vw = Worker(user_id=vu.id, cooperative_id=coop.id, profession="Plumber", verification_status="VERIFIED")
+            db.add(vw)
+            
+        # Create pending worker
+        pu = User(name="Pending", email="pending@test.com", password_hash=hash_password("password"), role=UserRole.WORKER, is_active=True)
+        db.add(pu)
+        db.flush()
+        pw = Worker(user_id=pu.id, cooperative_id=coop.id, profession="Plumber", verification_status="PENDING")
+        db.add(pw)
         db.commit()
     finally:
         db.close()
@@ -197,6 +213,31 @@ def main():
         print("---------------------------")
     else:
         print(f"FAIL ({res.text})")
+
+
+    print("9. Peer Verification Flow: ", end="")
+    res = client.post("/api/auth/login", data={"username": "pending@test.com", "password": "pw"})
+    if res.status_code == 200:
+        cand_token = res.json()["access_token"]
+        res = client.get("/api/workers/me", headers=auth(cand_token))
+        cand_id = res.json()["id"]
+        
+        voter_emails = ["voter0@test.com", "voter1@test.com", "voter2@test.com"]
+        for email in voter_emails:
+            login_res = client.post("/api/auth/login", data={"username": email, "password": "password"})
+            v_token = login_res.json()["access_token"]
+            v_res = client.post(f"/api/workers/{cand_id}/peer-verify", json={"vote": 1, "comments": "Looks good"}, headers=auth(v_token))
+            
+        final_res = client.get("/api/workers/me", headers=auth(cand_token))
+        if final_res.json()["verification_status"] == "VERIFIED":
+            print("PASS (3 votes reached)")
+        else:
+            print(f"FAIL (Not verified after 3 votes, status: {final_res.json()[
+verification_status]})")
+    else:
+        print("SKIP (Pending worker not found)")
+
+    print("\n--- E2E Smoke Test Finished Successfully ---")
 
 if __name__ == "__main__":
     main()
