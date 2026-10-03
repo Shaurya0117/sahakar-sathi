@@ -378,6 +378,7 @@ def test_worker_can_start_accepted_job():
     booking_id = alloc_res["id"]
 
     client.patch(f"/api/bookings/{booking_id}/accept", headers=auth_header(wtoken))
+    client.patch(f"/api/bookings/{booking_id}/arrive", headers=auth_header(wtoken))
     res = client.patch(f"/api/bookings/{booking_id}/start", headers=auth_header(wtoken))
 
     assert res.status_code == 200
@@ -407,6 +408,7 @@ def test_worker_can_complete_in_progress_job():
     booking_id = alloc_res["id"]
 
     client.patch(f"/api/bookings/{booking_id}/accept", headers=auth_header(wtoken))
+    client.patch(f"/api/bookings/{booking_id}/arrive", headers=auth_header(wtoken))
     client.patch(f"/api/bookings/{booking_id}/start", headers=auth_header(wtoken))
     res = client.patch(f"/api/bookings/{booking_id}/complete", headers=auth_header(wtoken))
 
@@ -444,6 +446,7 @@ def test_worker_total_jobs_increments_after_completion():
     booking_id = alloc_res["id"]
 
     client.patch(f"/api/bookings/{booking_id}/accept", headers=auth_header(wtoken))
+    client.patch(f"/api/bookings/{booking_id}/arrive", headers=auth_header(wtoken))
     client.patch(f"/api/bookings/{booking_id}/start", headers=auth_header(wtoken))
     client.patch(f"/api/bookings/{booking_id}/complete", headers=auth_header(wtoken))
 
@@ -573,6 +576,9 @@ def test_valid_status_transitions():
     acc = client.patch(f"/api/bookings/{booking_id}/accept", headers=auth_header(wtoken)).json()
     assert acc["status"] == "ACCEPTED"
 
+    arr = client.patch(f"/api/bookings/{booking_id}/arrive", headers=auth_header(wtoken)).json()
+    assert arr["arrived_at"] is not None
+
     # 3. Start (ACCEPTED -> IN_PROGRESS)
     st = client.patch(f"/api/bookings/{booking_id}/start", headers=auth_header(wtoken)).json()
     assert st["status"] == "IN_PROGRESS"
@@ -606,6 +612,7 @@ def test_completed_booking_cannot_be_modified():
     booking_id = alloc["id"]
 
     client.patch(f"/api/bookings/{booking_id}/accept", headers=auth_header(wtoken))
+    client.patch(f"/api/bookings/{booking_id}/arrive", headers=auth_header(wtoken))
     client.patch(f"/api/bookings/{booking_id}/start", headers=auth_header(wtoken))
     client.patch(f"/api/bookings/{booking_id}/complete", headers=auth_header(wtoken))
 

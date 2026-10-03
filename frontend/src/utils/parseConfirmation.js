@@ -1,21 +1,29 @@
 export function parseConfirmation(text) {
-  const normalized = text.toLowerCase().trim();
+  const normalized = text.toLowerCase().trim()
+  const words = normalized.split(/[\s,?!।]+/)
   
-  // Negative targets first
-  const negativeWords = ['no', 'na', 'nahi', 'नहीं', 'mat karo', 'ruko', 'cancel'];
-  for (const word of negativeWords) {
-    if (new RegExp('\\b' + word + '\\b').test(normalized)) {
-      return 'no';
+  // phrases
+  const negativePhrases = ["mat karo", "karo mat", "that is wrong"]
+  for (const phrase of negativePhrases) {
+    if (normalized.includes(phrase)) {
+      return "no"
     }
   }
 
-  // Positive targets second
-  const positiveWords = ['yes', 'haan', 'ha', 'theek', 'karo', 'हाँ'];
-  for (const word of positiveWords) {
-    if (new RegExp('\\b' + word + '\\b').test(normalized)) {
-      return 'yes';
+  // exact words
+  const negativeWords = ["no", "na", "nahi", "नहीं", "ruko", "cancel", "wrong"]
+  for (const target of negativeWords) {
+    if (words.includes(target)) {
+      return "no"
     }
   }
 
-  return 'unclear';
+  const positiveWords = ["yes", "haan", "ha", "theek", "karo", "हाँ"]
+  for (const target of positiveWords) {
+    if (words.includes(target)) {
+      return "yes"
+    }
+  }
+
+  return "unclear"
 }

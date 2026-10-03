@@ -332,6 +332,12 @@ def start_booking(db: Session, booking_id: int, worker_user: User) -> BookingRes
             detail=f"Cannot transition booking from {booking.status.value} to IN_PROGRESS.",
         )
 
+    if booking.arrived_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot start job without arriving first.",
+        )
+
     booking.status = BookingStatus.IN_PROGRESS
     db.commit()
     db.refresh(booking)

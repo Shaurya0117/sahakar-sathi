@@ -9,7 +9,7 @@
 | **Voice Assistant** | Implemented | Supports fuzzy phonetics for commands (`accept`, `start`, checking jobs/earnings). Uses `SpeechSynthesis` and `webkitSpeechRecognition` to communicate in Hindi. |
 | **Byzantine Fault Tolerant Trust** | Implemented | `test_workers.py` proves a sybil attack algorithm with an adaptive damping factor filters out malicious fake reviews. |
 | **Simulated Equity / Forecasting** | Implemented | Python script uses Monte-Carlo to project future wealth distributions. |
-| **GPS / Nonce / OTP** | Mocked | Defaulted to `False` in the backend. Proof of work currently runs on hashes alone; actual OTP exchange and precise GPS boundary validation is skipped pending full mobile app hooks. |
+| **Device Sensors (Loc/Auth)** | Mocked | NOT IMPLEMENTED | Proof = single on-device hash + Hamming anti-replay; no before/after anywhere. |
 
 ## Seed Data & The 3-Voter Rule
 The tests (`test_matching.py`) and our reset scripts demonstrate the strict `3-voter rule` constraints:
