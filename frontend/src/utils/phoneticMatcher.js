@@ -36,12 +36,37 @@ function levenshteinDistance(a, b) {
 }
 
 /**
+ * Transliterates Devanagari to Latin characters roughly so phonetic rules apply.
+ */
+function transliterateDevanagari(str) {
+  if (!str) return '';
+  const devanagariMap = {
+    'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ee', 'उ': 'u', 'ऊ': 'oo', 'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au',
+    'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh',
+    'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh',
+    'ट': 't', 'ठ': 'th', 'ड': 'd', 'ढ': 'dh',
+    'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
+    'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
+    'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v', 'श': 'sh', 'ष': 'sh', 'स': 's', 'ह': 'h',
+    'ा': 'a', 'ि': 'i', 'ी': 'ee', 'ु': 'u', 'ू': 'oo', 'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au', 'ं': 'n'
+  };
+  
+  let result = '';
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    result += devanagariMap[char] || char;
+  }
+  return result;
+}
+
+/**
  * Very basic Soundex-style phonetic normalization for Hindi/English variations.
  * Strips vowels and groups similar sounding consonants.
  */
 function phoneticNormalize(str) {
   if (!str) return ''
-  let s = str.toLowerCase().replace(/[^a-z0-9\s]/g, '')
+  let s = transliterateDevanagari(str.toLowerCase());
+  s = s.replace(/[^a-z0-9\s]/g, '')
   
   // Hindi/English phonetic normalization rules
   s = s.replace(/sh/g, 's')
@@ -62,7 +87,7 @@ function phoneticNormalize(str) {
  * Checks if transcript matches any of the target phrases using fuzzy logic.
  * Returns true if exact match, substring match, or fuzzy phonetic match within threshold.
  */
-export function fuzzyMatchIntent(transcript, targetPhrases, threshold = 2) {
+export function fuzzyMatchIntent(transcript, targetPhrases, threshold = 2, requiresStrict = false) {
   if (!transcript || !targetPhrases || targetPhrases.length === 0) return false
   
   const lowerTranscript = transcript.toLowerCase().trim()
@@ -85,9 +110,16 @@ export function fuzzyMatchIntent(transcript, targetPhrases, threshold = 2) {
       for (const tw of words) {
         // Direct Levenshtein on word
         if (levenshteinDistance(pw, tw) <= threshold) {
-          wordMatched = true
-          break
+            wordMatched = true
+            break
         }
+        
+        // Handle Devanagari direct match
+        if (levenshteinDistance(transliterateDevanagari(pw), transliterateDevanagari(tw)) <= threshold) {
+            wordMatched = true
+            break
+        }
+
         // Phonetic Levenshtein (e.g. "kamaai" vs "kamayee")
         if (levenshteinDistance(phoneticNormalize(pw), phoneticNormalize(tw)) <= 1) {
           wordMatched = true
@@ -97,8 +129,10 @@ export function fuzzyMatchIntent(transcript, targetPhrases, threshold = 2) {
       if (wordMatched) matchedWords++
     }
     
-    // If we matched at least 70% of the words in the target phrase, consider it a match
-    if (phraseWords.length > 0 && matchedWords / phraseWords.length >= 0.7) {
+    // If strict match required (e.g. for "accept"), we need 100% of the phrase words to match, 
+    // otherwise 70% is enough.
+    const matchRatio = requiresStrict ? 1.0 : 0.7;
+    if (phraseWords.length > 0 && matchedWords / phraseWords.length >= matchRatio) {
       return true
     }
   }

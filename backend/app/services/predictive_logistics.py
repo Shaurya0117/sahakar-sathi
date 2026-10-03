@@ -44,49 +44,62 @@ def get_required_part(appliance_type: str) -> str:
     return parts_map.get(appliance_type, "Standard Kit")
 
 
+import math
+
+from app.config import WEIBULL_PARAMS
+
 def forecast_failure(appliance: HouseholdAppliance) -> dict:
     """
-    Mock AI Model for Failure Forecasting (Simulating Bi-LSTM/GRU output).
-    Calculates health score drop based on age and time since last service.
+    Predictive Logistics Model using Weibull Survival Analysis.
+    Calculates the probability of survival (Reliability) and predicts failure
+    based on the appliance's characteristic lifespan and wear-out curve.
+    Requires no training data, making it explainable and legally defensible.
     """
     now = datetime.datetime.utcnow()
     
-    # If newly tracked, give it a high score
     if not appliance.last_serviced_date:
         appliance.last_serviced_date = now
-        appliance.health_score = 90.0
+        appliance.health_score = 100.0
         
-    days_since_service = (now - appliance.last_serviced_date).days
     age_years = (now.year - appliance.purchase_year) if appliance.purchase_year else 3
+    age_days = age_years * 365.25
     
-    # Degrade health score based on time and age
-    degradation = (days_since_service * 0.1) + (age_years * 5.0)
+    # Get Weibull parameters for this appliance type
+    params = WEIBULL_PARAMS.get(appliance.appliance_type, WEIBULL_PARAMS["General Appliance"])
+    eta = params["eta"]
+    beta = params["beta"]
     
-    # After a recent service, health should be restored somewhat
-    # But since this runs AT job completion, we are predicting the FUTURE state.
-    # Let's say the current repair fixes the immediate issue (health bumps to 85)
-    # But we predict the NEXT failure.
+    # Reliability function R(t) = e^(-(t/eta)^beta)
+    # This gives the % chance the appliance survives to 'age_days'
+    reliability = math.exp(-((age_days / eta) ** beta))
+    health_score = reliability * 100.0
     
-    new_health = max(10.0, 85.0 - (age_years * 2.0)) # Older appliances max out lower
+    # Predict days until reliability drops below critical threshold (e.g., 20%)
+    critical_threshold = 0.20
+    # Solve for t in R(t) = 0.20: t = eta * (-ln(0.20))^(1/beta)
+    target_failure_days = eta * ((-math.log(critical_threshold)) ** (1/beta))
     
-    # Predict days until next failure (lower health = fewer days)
-    # E.g. Health 85 -> ~180 days. Health 40 -> ~30 days.
-    predicted_days = int(new_health * 2.5) + random.randint(-15, 15)
+    predicted_failure_days = max(5, int(target_failure_days - age_days))
     
-    appliance.health_score = new_health
-    appliance.predicted_failure_days = max(5, predicted_days)
+    # After a recent service, we assume basic maintenance extends life slightly
+    days_since_service = (now - appliance.last_serviced_date).days
+    if days_since_service < 30:
+        predicted_failure_days += 90  # Maintenance bump
+        health_score = min(100.0, health_score + 15.0)
+
+    appliance.health_score = health_score
+    appliance.predicted_failure_days = predicted_failure_days
     
     return {
-        "health_score": round(new_health, 1),
+        "health_score": round(health_score, 1),
         "predicted_failure_days": appliance.predicted_failure_days,
-        "needs_pre_reservation": appliance.predicted_failure_days < 60 # Critical threshold
+        "needs_pre_reservation": appliance.predicted_failure_days < 90 # Critical threshold
     }
-
 
 def run_predictive_logistics(db: Session, user_id: int, service_name: str, location: str) -> dict:
     """
     Runs the full Predictive Logistics pipeline:
-    1. Forecasts next failure.
+    1. Forecasts next failure using Weibull Survival Model.
     2. Pre-reserves parts at a local shop if failure is imminent.
     """
     app_type = parse_appliance_type(service_name)

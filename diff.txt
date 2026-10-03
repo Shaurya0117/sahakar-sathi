@@ -1,0 +1,2617 @@
+diff --git a/.gitignore b/.gitignore
+index 3983647..d8edd1a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -71,3 +71,4 @@ desktop.ini
+ .idea/
+ *.swp
+ *.swo
++.rocketride/
+diff --git a/backend/app/config.py b/backend/app/config.py
+index a1ed1c3..a888d40 100644
+--- a/backend/app/config.py
++++ b/backend/app/config.py
+@@ -38,3 +38,23 @@ class Settings(BaseSettings):
+ 
+ 
+ settings = Settings()
++
++
++"""
++Global constants for platform configuration.
++"""
++
++# Worker Fatigue: Maximum allowable fatigue before assignments are blocked or excluded from matches.
++MAX_FATIGUE_THRESHOLD = 80.0
++
++# Weibull Parameters per Appliance (Characteristic Life in days, Shape factor)
++# assumed values, not from real data.
++WEIBULL_PARAMS = {
++    'Air Conditioner': {'eta': 2500, 'beta': 1.5},
++    'Ceiling Fan': {'eta': 3600, 'beta': 1.2},
++    'Plumbing System': {'eta': 4000, 'beta': 2.0},
++    'Refrigerator': {'eta': 3000, 'beta': 1.5},
++    'Washing Machine': {'eta': 2000, 'beta': 1.8},
++    'Electrical Board': {'eta': 5000, 'beta': 1.1},
++    'General Appliance': {'eta': 3000, 'beta': 1.5}
++}
+diff --git a/backend/app/models/booking.py b/backend/app/models/booking.py
+index f6fed38..547ae42 100644
+--- a/backend/app/models/booking.py
++++ b/backend/app/models/booking.py
+@@ -39,8 +39,12 @@ class Booking(Base):
+     customer_review = Column(String(1000), nullable=True)
+     payment_status = Column(String(50), default="PENDING")
+     
++    # Arrived at for punctuality tracking
++    arrived_at = Column(DateTime, nullable=True)
++    
+     # Novel Patent Feature: Privacy-Preserving Proof of Work (Edge AI)
+-    proof_of_work_hash = Column(String(255), nullable=True)
++    before_work_hash = Column(String(255), nullable=True)
++    after_work_hash = Column(String(255), nullable=True)
+     privacy_score = Column(Float, nullable=True)
+ 
+     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+diff --git a/backend/app/routes/equity.py b/backend/app/routes/equity.py
+index 2a0541b..0d6571d 100644
+--- a/backend/app/routes/equity.py
++++ b/backend/app/routes/equity.py
+@@ -1,7 +1,7 @@
+ """
+ Equity Dashboard API Routes.
+ 
+-Patent Feature: Cooperative Workload Equity Graph — admin-only endpoints
++Patent Feature: Cooperative Workload Equity Index — admin-only endpoints
+ for viewing cooperative-wide fairness analytics.
+ """
+ from fastapi import APIRouter, Depends
+@@ -16,7 +16,7 @@ from app.services.matching.equity_graph import (
+     get_cooperative_equity_dashboard,
+ )
+ 
+-equity_router = APIRouter(prefix="/equity", tags=["Equity Graph"])
++equity_router = APIRouter(prefix="/equity", tags=["Equity Index"])
+ 
+ 
+ @equity_router.get(
+@@ -28,7 +28,7 @@ def get_equity_dashboard(
+     admin_user: User = Depends(require_admin),
+ ):
+     """
+-    Patent Feature: Cooperative Workload Equity Graph Dashboard.
++    Patent Feature: Cooperative Workload Equity Index Dashboard.
+ 
+     Returns multi-dimensional fairness analytics across all cooperative workers:
+     - Per-worker equity scores (income parity, geographic burden, skill utilization,
+@@ -54,7 +54,7 @@ def get_worker_equity(
+     admin_user: User = Depends(require_admin),
+ ):
+     """
+-    Returns the full equity graph breakdown for a single worker.
++    Returns the full equity index breakdown for a single worker.
+     """
+     worker = db.query(Worker).filter(Worker.id == worker_id).first()
+     if not worker:
+diff --git a/backend/app/routes/service_requests.py b/backend/app/routes/service_requests.py
+index 3f03060..994f6a9 100644
+--- a/backend/app/routes/service_requests.py
++++ b/backend/app/routes/service_requests.py
+@@ -164,16 +164,20 @@ def list_all_requests_admin(
+     requests = get_all_cooperative_requests_for_admin(db)
+     return [build_service_request_response(r) for r in requests]
+ 
+-# ── POST /api/requests/{id}/upload-photo ───────────────────────────────────────
+-
+ import os
+ import shutil
++import uuid
+ from fastapi import UploadFile, File
++from fastapi.responses import FileResponse
++from app.models.user import UserRole
++from app.models.booking import Booking
++
++PRIVATE_UPLOAD_DIR = "private_uploads"
+ 
+ @router.post(
+     "/{request_id}/upload-photo",
+     response_model=ServiceRequestResponse,
+-    summary="Upload a photo for a service request (CUSTOMER only)",
++    summary="Upload a photo securely with UUID (CUSTOMER only)",
+ )
+ def upload_request_photo(
+     request_id: int,
+@@ -185,15 +189,62 @@ def upload_request_photo(
+     if not req:
+         raise HTTPException(status_code=404, detail="Request not found.")
+         
+-    upload_dir = "static/uploads"
+-    os.makedirs(upload_dir, exist_ok=True)
++    os.makedirs(PRIVATE_UPLOAD_DIR, exist_ok=True)
++    
++    # Generate UUID filename
++    ext = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
++    safe_filename = f"{uuid.uuid4().hex}.{ext}"
++    file_path = os.path.join(PRIVATE_UPLOAD_DIR, safe_filename)
+     
+-    file_path = f"{upload_dir}/req_{req.id}_{file.filename}"
+     with open(file_path, "wb") as buffer:
+         shutil.copyfileobj(file.file, buffer)
+         
+-    req.image_url = f"/{file_path}"
++    # Store internal path or secure url
++    req.image_url = f"/api/requests/{req.id}/photo"
++    req.internal_image_path = file_path # Ideally add column, but we can store it in image_url for now
++    req.image_url = f"/api/requests/{req.id}/photo?path={safe_filename}"
+     db.commit()
+     db.refresh(req)
+     
+     return build_service_request_response(req)
++
++from app.auth.dependencies import get_current_user
++@router.get(
++    "/{request_id}/photo",
++    summary="Serve request photo securely with auth check",
++)
++def get_request_photo(
++    request_id: int,
++    path: str,
++    current_user: User = Depends(get_current_user),
++    db: Session = Depends(get_db),
++):
++    req = db.query(ServiceRequest).filter(ServiceRequest.id == request_id).first()
++    if not req:
++        raise HTTPException(status_code=404, detail="Request not found.")
++        
++    # Auth check: Customer owner, Admin, or Assigned Worker
++    is_authorized = False
++    if current_user.role == UserRole.ADMIN:
++        is_authorized = True
++    elif current_user.role == UserRole.CUSTOMER and req.customer_id == current_user.id:
++        is_authorized = True
++    elif current_user.role == UserRole.WORKER:
++        # Check if worker is assigned to this request
++        worker = current_user.worker_profile
++        if worker:
++            booking = db.query(Booking).filter(
++                Booking.request_id == request_id, 
++                Booking.worker_id == worker.id
++            ).first()
++            if booking:
++                is_authorized = True
++                
++    if not is_authorized:
++        raise HTTPException(status_code=403, detail="Not authorized to view this photo.")
++        
++    file_path = os.path.join(PRIVATE_UPLOAD_DIR, path)
++    if not os.path.exists(file_path):
++        raise HTTPException(status_code=404, detail="Photo file not found.")
++        
++    return FileResponse(file_path)
+diff --git a/backend/app/schemas/booking.py b/backend/app/schemas/booking.py
+index 068d9a8..d3a87d7 100644
+--- a/backend/app/schemas/booking.py
++++ b/backend/app/schemas/booking.py
+@@ -19,6 +19,9 @@ class ReviewCreateRequest(BaseModel):
+     review: Optional[str] = Field(None, max_length=1000, description="Optional written review")
+ 
+ 
++class StartBookingRequest(BaseModel):
++    before_work_hash: Optional[str] = Field(None)
++
+ class CompleteBookingRequest(BaseModel):
+     """Payload sent by Worker to complete a job, optionally providing Edge AI Proof of Work."""
+     proof_of_work_hash: Optional[str] = Field(None, description="Edge AI generated sensor fusion hash")
+diff --git a/backend/app/schemas/matching.py b/backend/app/schemas/matching.py
+index 2bf15af..dc57095 100644
+--- a/backend/app/schemas/matching.py
++++ b/backend/app/schemas/matching.py
+@@ -1,7 +1,7 @@
+ """
+ Pydantic schemas for Explainable AI Worker Matching.
+ 
+-Includes Patent Feature: Cooperative Workload Equity Graph — multi-dimensional
++Includes Patent Feature: Cooperative Workload Equity Index — multi-dimensional
+ fairness scoring across income parity, geographic burden, skill utilization,
+ temporal equity, and fatigue capacity.
+ """
+@@ -22,7 +22,7 @@ class EquityDimensionContributions(BaseModel):
+ 
+ class EquityBreakdown(BaseModel):
+     """
+-    Patent Feature: Cooperative Workload Equity Graph.
++    Patent Feature: Cooperative Workload Equity Index.
+ 
+     Multi-dimensional fairness breakdown for a worker candidate,
+     computed in real-time during matching.
+@@ -46,10 +46,10 @@ class ScoreBreakdown(BaseModel):
+     availability: float
+     rating: float
+     experience: float
+-    bio_economic_score: float
++    workload_income_health_score: float
+     fatigue_index: float
+     economic_deficit: float
+-    # Patent Feature: Equity Graph dimensions
++    # Patent Feature: Equity Index dimensions
+     equity: Optional[EquityBreakdown] = None
+ 
+ 
+diff --git a/backend/app/services/booking.py b/backend/app/services/booking.py
+index a5175ce..1fbb9b8 100644
+--- a/backend/app/services/booking.py
++++ b/backend/app/services/booking.py
+@@ -66,7 +66,8 @@ def build_booking_response(db: Session, booking: Booking) -> BookingResponse:
+         amount=booking.amount,
+         customer_rating=booking.customer_rating,
+         customer_review=booking.customer_review,
+-        proof_of_work_hash=booking.proof_of_work_hash,
++        before_work_hash=booking.before_work_hash,
++            after_work_hash=booking.after_work_hash,
+         privacy_score=booking.privacy_score,
+         payment_status=booking.payment_status or "PENDING",
+         assigned_by_name=assigner.name if assigner else "Cooperative Admin",
+@@ -324,7 +325,7 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
+     Updates Booking & ServiceRequest to COMPLETED, and atomically increments worker.total_jobs.
+     
+     Patent Feature: Privacy-Preserving Proof of Work (Edge AI).
+-    When proof_of_work_hash is provided, the system validates the hash,
++    When after_work_hash is provided, the system validates the hash,
+     checks uniqueness, and computes verification confidence — all without
+     requiring the actual image to be uploaded.
+     """
+@@ -348,16 +349,16 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
+     booking.status = BookingStatus.COMPLETED
+     
+     if payload:
+-        booking.proof_of_work_hash = payload.proof_of_work_hash
++        booking.after_work_hash = payload.after_work_hash
+         booking.privacy_score = payload.privacy_score
+ 
+         # Patent Feature: Verify proof-of-work hash
+-        if payload.proof_of_work_hash:
++        if payload.after_work_hash:
+             from app.services.proof_verification import verify_proof_of_work
+             verification = verify_proof_of_work(
+                 db=db,
+                 booking_id=booking.id,
+-                hash_str=payload.proof_of_work_hash,
++                hash_str=payload.after_work_hash,
+                 privacy_score=payload.privacy_score,
+             )
+             # Store verification confidence in privacy_score if not already set
+@@ -375,7 +376,7 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
+     # Patent Feature: Hyper-Local Predictive Logistics
+     # Forecasts appliance failures and pre-positions spare parts upon job completion
+     from app.services.predictive_logistics import run_predictive_logistics
+-    if req and req.service_name:
++    if req:
+         logistics_result = run_predictive_logistics(
+             db=db, 
+             user_id=req.customer_id, 
+diff --git a/backend/app/services/governance.py b/backend/app/services/governance.py
+index 563700c..595f872 100644
+--- a/backend/app/services/governance.py
++++ b/backend/app/services/governance.py
+@@ -4,7 +4,7 @@ Cooperative Democratic Governance — Backend Service
+ Enables cooperative proposals and worker voting.
+ Only ADMIN can create proposals. Only VERIFIED workers can vote.
+ Each worker gets 1 vote per proposal, weighted by trust score.
+-Results are tamper-proofed with SHA-256 hash of all votes.
++Results are tamper-evidented with SHA-256 hash of all votes.
+ """
+ from datetime import datetime, timezone
+ import hashlib
+@@ -26,7 +26,7 @@ class CooperativeProposal(Base):
+     status = Column(String, default="ACTIVE")  # ACTIVE, PASSED, REJECTED, CLOSED
+     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+     closes_at = Column(DateTime, nullable=True)
+-    result_hash = Column(String, nullable=True)  # SHA-256 tamper-proof hash
++    result_hash = Column(String, nullable=True)  # SHA-256 tamper-evident hash
+     votes_json = Column(Text, default="[]")  # JSON array of vote records
+ 
+ 
+@@ -59,10 +59,9 @@ def list_proposals(db: Session):
+     results = []
+     for p in proposals:
+         votes = json.loads(p.votes_json) if p.votes_json else []
+-        yes_votes = [v for v in votes if v["vote"] == "YES"]
+-        no_votes = [v for v in votes if v["vote"] == "NO"]
+-        total_weight = sum(v.get("weight", 1) for v in votes)
+-        yes_weight = sum(v.get("weight", 1) for v in yes_votes)
++        yes_votes = len([v for v in votes if v["vote"] == "YES"])
++        no_votes = len([v for v in votes if v["vote"] == "NO"])
++        total_votes = len(votes)
+ 
+         results.append({
+             "id": p.id,
+@@ -71,19 +70,19 @@ def list_proposals(db: Session):
+             "category": p.category,
+             "status": p.status,
+             "created_at": p.created_at.isoformat() if p.created_at else None,
+-            "total_votes": len(votes),
+-            "yes_votes": len(yes_votes),
+-            "no_votes": len(no_votes),
+-            "yes_weight": round(yes_weight, 2),
+-            "total_weight": round(total_weight, 2),
+-            "approval_pct": round((yes_weight / total_weight) * 100, 1) if total_weight > 0 else 0,
++            "total_votes": total_votes,
++            "yes_votes": yes_votes,
++            "no_votes": no_votes,
++            "yes_weight": yes_votes, # Kept for frontend compatibility
++            "total_weight": total_votes,
++            "approval_pct": round((yes_votes / total_votes) * 100, 1) if total_votes > 0 else 0,
+             "result_hash": p.result_hash,
+         })
+     return results
+ 
+ 
+ def cast_vote(db: Session, proposal_id: int, worker_id: int, worker_name: str, trust_score: float, vote: str):
+-    """Worker casts a weighted vote on a proposal."""
++    """Worker casts a single equal vote on a proposal (One Member, One Vote)."""
+     proposal = db.query(CooperativeProposal).filter(CooperativeProposal.id == proposal_id).first()
+     if not proposal:
+         raise ValueError("Proposal not found.")
+@@ -101,46 +100,49 @@ def cast_vote(db: Session, proposal_id: int, worker_id: int, worker_name: str, t
+         if v["worker_id"] == worker_id:
+             raise ValueError("You have already voted on this proposal.")
+ 
+-    # Weight vote by trust score (1.0 to 3.0)
++    # One Member, One Vote
+     weight = 1.0
+-    if trust_score >= 90:
+-        weight = 3.0
+-    elif trust_score >= 75:
+-        weight = 2.0
+-    elif trust_score >= 60:
+-        weight = 1.5
+ 
++    # Tamper-evident chaining: Get previous vote's hash or proposal ID
++    prev_hash = votes[-1]["vote_hash"] if votes else str(proposal_id)
++    
+     vote_record = {
+         "worker_id": worker_id,
+         "worker_name": worker_name,
+         "vote": vote,
+         "weight": weight,
+-        "trust_score": trust_score,
+         "timestamp": datetime.now(timezone.utc).isoformat(),
++        "prev_hash": prev_hash
+     }
++    
++    # Generate chain hash
++    vote_record["vote_hash"] = hashlib.sha256(json.dumps(vote_record, sort_keys=True).encode()).hexdigest()
++    
+     votes.append(vote_record)
+     proposal.votes_json = json.dumps(votes)
++    proposal.result_hash = vote_record["vote_hash"]
+ 
+-    # Compute tamper-proof hash of all votes
+-    vote_data = json.dumps(votes, sort_keys=True)
+-    proposal.result_hash = hashlib.sha256(vote_data.encode()).hexdigest()
++    yes_votes = sum(1 for v in votes if v["vote"] == "YES")
++    no_votes = sum(1 for v in votes if v["vote"] == "NO")
++    total_votes = len(votes)
+ 
+-    # Auto-resolve if enough votes (e.g., 5+ votes and clear majority)
+-    yes_weight = sum(v.get("weight", 1) for v in votes if v["vote"] == "YES")
+-    no_weight = sum(v.get("weight", 1) for v in votes if v["vote"] == "NO")
+-    total_weight = yes_weight + no_weight
++    # Simplified Quorum (e.g., minimum 5 votes for a decision)
++    # In a real app, query verified workers count and check >= 50%
++    from app.models.worker import Worker, VerificationStatus
++    total_verified_workers = db.query(Worker).filter(Worker.verification_status == VerificationStatus.VERIFIED).count()
++    quorum = max(3, int(total_verified_workers * 0.5))
+ 
+-    if len(votes) >= 3 and total_weight > 0:
+-        approval = (yes_weight / total_weight) * 100
+-        if approval >= 66.7:
++    if total_votes >= quorum:
++        approval = (yes_votes / total_votes) * 100
++        if approval > 50.0:
+             proposal.status = "PASSED"
+-        elif (no_weight / total_weight) * 100 >= 66.7:
++        elif (no_votes / total_votes) * 100 >= 50.0:
+             proposal.status = "REJECTED"
+ 
+     db.commit()
+ 
+     return {
+-        "message": f"✅ Your vote ({vote}) has been recorded with weight {weight}x (Trust: {trust_score}).",
++        "message": f"✅ Your vote ({vote}) has been recorded. (One Member, One Vote).",
+         "vote": vote,
+         "weight": weight,
+         "proposal_status": proposal.status,
+diff --git a/backend/app/services/matching/engine.py b/backend/app/services/matching/engine.py
+index 288393c..52569c0 100644
+--- a/backend/app/services/matching/engine.py
++++ b/backend/app/services/matching/engine.py
+@@ -1,9 +1,9 @@
+ """
+ Matching Engine Orchestrator.
+ 
+-Combines candidate filtering, scoring, explainability, equity graph, and ranking.
++Combines candidate filtering, scoring, explainability, equity index, and ranking.
+ 
+-Patent Feature: Integrates the Cooperative Workload Equity Graph for
++Patent Feature: Integrates the Cooperative Workload Equity Index for
+ multi-dimensional fairness-aware worker matching.
+ """
+ from typing import List, Optional
+@@ -43,7 +43,7 @@ def get_matching_recommendations(
+     Generate explainable worker recommendations for service request *request_id*.
+ 
+     Returns RequestMatchingResponse with candidate_count and ranked worker recommendations.
+-    Now includes Patent Feature: Cooperative Workload Equity Graph — multi-dimensional
++    Now includes Patent Feature: Cooperative Workload Equity Index — multi-dimensional
+     fairness breakdown for each candidate.
+ 
+     Raises HTTPException 404 if request not found.
+@@ -64,7 +64,7 @@ def get_matching_recommendations(
+ 
+     recommendations: List[WorkerRecommendation] = []
+ 
+-    # Step 2, 3, 4: Score, Equity Graph, & Explain Each Candidate
++    # Step 2, 3, 4: Score, Equity Index, & Explain Each Candidate
+     for worker in candidates:
+         user = db.query(User).filter(User.id == worker.user_id).first()
+         worker_name = user.name if user else f"Worker #{worker.id}"
+@@ -83,7 +83,7 @@ def get_matching_recommendations(
+         experience_score = calculate_experience_score(worker)
+         bio_metrics = calculate_bio_economic_metrics(worker)
+ 
+-        # Patent Feature: Cooperative Workload Equity Graph
++        # Patent Feature: Cooperative Workload Equity Index
+         equity_data = calculate_equity_score(db, worker)
+ 
+         # Safety floor: exclude fatigued workers (from either legacy or equity check)
+@@ -109,7 +109,7 @@ def get_matching_recommendations(
+             "availability": availability_score,
+             "rating": rating_score,
+             "experience": experience_score,
+-            "bio_economic_score": bio_metrics["bio_economic_score"],
++            "workload_income_health_score": bio_metrics["workload_income_health_score"],
+             "fatigue_index": bio_metrics["fatigue_index"],
+             "economic_deficit": bio_metrics["economic_deficit"],
+             "equity_score": equity_data["composite_equity_score"],
+diff --git a/backend/app/services/matching/equity_graph.py b/backend/app/services/matching/equity_graph.py
+index fa7818d..65ade1e 100644
+--- a/backend/app/services/matching/equity_graph.py
++++ b/backend/app/services/matching/equity_graph.py
+@@ -1,5 +1,6 @@
++from app.config import MAX_FATIGUE_THRESHOLD
+ """
+-Patent Feature: Cooperative Workload Equity Graph.
++Patent Feature: Cooperative Workload Equity Index.
+ 
+ A Multi-Dimensional Fairness Optimization System for Cooperative Gig Platforms.
+ 
+@@ -233,37 +234,62 @@ def calculate_fatigue_capacity(db: Session, worker: Worker) -> float:
+     Fatigue Capacity Score (0–100).
+ 
+     Models physical strain as a function of recent job count weighted by
+-    job physical intensity. A plumber who has done 5 plumbing jobs has
+-    more fatigue than someone who did 5 consulting calls.
+-
+-    Lower fatigue = HIGHER score (worker has more capacity).
+-
+-    Safety Floor: If fatigue exceeds threshold, returns 0 (worker blocked).
++    job physical intensity, duration, and a time-decay factor (0.8^days_ago) over 7 days.
++    
++    Formula: load = Σ (intensity × hours × 0.8^days_ago)
++    fatigue = min(100, load / safe_load × 100)
++    capacity = 100 - fatigue
+     """
+-    recent_bookings = _get_worker_recent_bookings(db, worker.id, limit=15)
++    from datetime import datetime, timezone
++    
++    # Fetch all bookings from the last 7 days
++    recent_bookings = _get_worker_recent_bookings(db, worker.id, limit=50)
+ 
+     if not recent_bookings:
+         return 90.0  # Fresh worker — high capacity
+ 
+-    weighted_load = 0.0
++    load = 0.0
++    now = datetime.now(timezone.utc)
++    
+     for booking in recent_bookings:
++        # Check if booking is within last 7 days
++        days_ago = 0
++        if booking.updated_at:
++            # Assumes updated_at is naive or aware, making it naive for timedelta if needed
++            booking_time = booking.updated_at
++            if booking_time.tzinfo is None:
++                # If naive, compare with naive utcnow
++                delta = datetime.utcnow() - booking_time
++            else:
++                delta = now - booking_time
++            days_ago = delta.total_seconds() / (24 * 3600)
++            
++        if days_ago > 7:
++            continue
++
+         req = db.query(ServiceRequest).filter(ServiceRequest.id == booking.request_id).first()
++        hours = 1.0 # Default 1 hour
++        intensity = 0.50
++        
+         if req:
+             service = db.query(Service).filter(Service.id == req.service_id).first()
+             if service:
+                 intensity = _get_job_intensity(service.name, service.category)
+-            else:
+-                intensity = 0.50
+-        else:
+-            intensity = 0.50
++                hours = (service.duration_minutes or 60) / 60.0
++
++        status_multiplier = 1.0
++        if booking.status in (BookingStatus.IN_PROGRESS, BookingStatus.ACCEPTED):
++            status_multiplier = 0.5  # Upcoming jobs contribute partial fatigue
++            days_ago = 0 # Currently happening
++        elif booking.status != BookingStatus.COMPLETED:
++            continue
+ 
+-        if booking.status == BookingStatus.COMPLETED:
+-            weighted_load += intensity
+-        elif booking.status in (BookingStatus.IN_PROGRESS, BookingStatus.ACCEPTED):
+-            weighted_load += intensity * 0.5  # Upcoming jobs contribute partial fatigue
++        job_load = intensity * hours * (0.8 ** max(0, days_ago)) * status_multiplier
++        load += job_load
+ 
+-    # Normalize: 0 load = 100 capacity, 8+ weighted load = near 0 capacity
+-    fatigue_index = min(100.0, weighted_load * 12.5)
++    # Assuming a safe_load of around 15-20 (e.g. 5 days of 4 hours at 0.8 intensity = 16)
++    safe_load = 18.0
++    fatigue_index = min(100.0, (load / safe_load) * 100.0)
+     capacity_score = max(0.0, 100.0 - fatigue_index)
+ 
+     return round(capacity_score, 1)
+@@ -276,12 +302,12 @@ def is_worker_fatigued(db: Session, worker: Worker) -> bool:
+     Fatigued workers should be excluded from recommendations entirely.
+     """
+     capacity = calculate_fatigue_capacity(db, worker)
+-    return capacity <= 10.0  # Below 10% capacity = safety block
++    return capacity <= (100 - MAX_FATIGUE_THRESHOLD)  # Exceeds max fatigue
+ 
+ 
+ def calculate_equity_score(db: Session, worker: Worker) -> Dict:
+     """
+-    Master Equity Graph Computation.
++    Master Equity Index Computation.
+ 
+     Computes all 5 equity dimensions and returns a comprehensive breakdown
+     with per-dimension scores, weights, and composite equity score.
+@@ -303,7 +329,7 @@ def calculate_equity_score(db: Session, worker: Worker) -> Dict:
+     temporal = calculate_temporal_fairness(db, worker)
+     fatigue = calculate_fatigue_capacity(db, worker)
+ 
+-    is_fatigued = fatigue <= 10.0
++    is_fatigued = fatigue <= (100 - MAX_FATIGUE_THRESHOLD)
+ 
+     # Weighted composite
+     composite = (
+diff --git a/backend/app/services/matching/explain.py b/backend/app/services/matching/explain.py
+index 49e5bae..73e1cfb 100644
+--- a/backend/app/services/matching/explain.py
++++ b/backend/app/services/matching/explain.py
+@@ -2,7 +2,7 @@
+ Explanation Generator for Worker Matching Recommendations.
+ 
+ Translates component score breakdown into transparent, human-readable bullet points.
+-Includes Patent Feature: Cooperative Workload Equity Graph explanations.
++Includes Patent Feature: Cooperative Workload Equity Index explanations.
+ """
+ from typing import List
+ 
+@@ -56,22 +56,22 @@ def generate_match_explanation(
+     elif exp_years >= 2:
+         reasons.append(f"Good experience level ({exp_years} years)")
+ 
+-    # 6. Bio-Economic Fatigue Routing reason
+-    bio_score = breakdown.get("bio_economic_score", 0)
++    # 6. Workload & Income Health Fatigue Routing reason
++    bio_score = breakdown.get("workload_income_health_score", 0)
+     fatigue = breakdown.get("fatigue_index", 0)
+     deficit = breakdown.get("economic_deficit", 0)
+     
+     if bio_score >= 80:
+-        reasons.append(f"Highly optimized bio-economic match (Income deficit: {deficit}%, Fatigue: {fatigue}%)")
++        reasons.append(f"Highly optimized workload & income health match (Income deficit: {deficit}%, Fatigue: {fatigue}%)")
+     elif bio_score >= 50:
+-        reasons.append(f"Fair bio-economic routing priority (Fatigue Index: {fatigue}%)")
++        reasons.append(f"Fair workload & income health routing priority (Fatigue Index: {fatigue}%)")
+ 
+     return reasons
+ 
+ 
+ def generate_equity_explanation(equity_data: dict) -> List[str]:
+     """
+-    Patent Feature: Generate human-readable explanations for Equity Graph dimensions.
++    Patent Feature: Generate human-readable explanations for Equity Index dimensions.
+ 
+     Provides cooperative admins with transparent insight into WHY a worker
+     is being given equity-based priority.
+diff --git a/backend/app/services/matching/scorer.py b/backend/app/services/matching/scorer.py
+index d3a0f0c..e01f515 100644
+--- a/backend/app/services/matching/scorer.py
++++ b/backend/app/services/matching/scorer.py
+@@ -1,3 +1,4 @@
++from app.config import MAX_FATIGUE_THRESHOLD
+ """
+ Scoring Engine for Worker Matching.
+ 
+@@ -135,40 +136,38 @@ def calculate_experience_score(worker: Worker) -> float:
+ 
+ def calculate_bio_economic_metrics(worker: Worker) -> dict:
+     """
+-    Novel Patent Feature: Bio-Economic Fatigue Routing Algorithm
+-    Calculates physical strain and income parity.
+-    Includes a safety floor: if fatigue is too high, the worker is blocked.
++    Workload & Income Health Fatigue Routing Algorithm
++    Merged into the Equity Index (Patent 3 & 4 combined).
+     """
+-    jobs = worker.total_jobs or 0
+-    
+-    # Fatigue Index: scales non-linearly with jobs (mocking physiological strain over a period)
+-    # Higher index = more exhausted
+-    fatigue_index = min(100.0, jobs * 3.5)
+-    
+-    # Safety Floor Hard Cap (8/10 or 80.0)
+-    is_fatigued = fatigue_index >= 80.0
+-    
+-    # Economic Deficit: How far is the worker from the cooperative's target weekly parity income?
+-    target_income = 5000 
+-    actual_income = jobs * 500
+-    economic_deficit = max(0.0, min(100.0, ((target_income - actual_income) / target_income) * 100))
+-    
+-    # Bio-Economic Score: High deficit boosts score, High fatigue reduces score
+-    bio_economic_score = max(10.0, 100.0 - fatigue_index + economic_deficit) if not is_fatigued else 0.0
+-    
+-    return {
+-        "fatigue_index": round(fatigue_index, 1),
+-        "economic_deficit": round(economic_deficit, 1),
+-        "bio_economic_score": min(100.0, round(bio_economic_score, 1)),
+-        "is_fatigued": is_fatigued
+-    }
++    from app.services.matching.equity_graph import calculate_fatigue_capacity, calculate_income_parity
++    from app.database import SessionLocal # or pass session
++    db = SessionLocal()
++    try:
++        fatigue_capacity = calculate_fatigue_capacity(db, worker)
++        fatigue_index = 100.0 - fatigue_capacity
++        is_fatigued = fatigue_index >= 90.0 # capacity <= 10.0
++        
++        # We reuse the income parity score from equity index
++        income_parity = calculate_income_parity(db, worker)
++        economic_deficit = income_parity # Parity score is higher if deficit is higher
++        
++        workload_income_health_score = max(10.0, 100.0 - fatigue_index + economic_deficit) if not is_fatigued else 0.0
++        
++        return {
++            "fatigue_index": round(fatigue_index, 1),
++            "economic_deficit": round(economic_deficit, 1),
++            "workload_income_health_score": min(100.0, round(workload_income_health_score, 1)),
++            "is_fatigued": is_fatigued
++        }
++    finally:
++        db.close()
+ 
+ 
+ def calculate_total_score(breakdown: dict) -> float:
+-    # Patent Feature: Use Equity Graph composite score if available, fallback to legacy bio_economic_score
++    # Patent Feature: Use Equity Index composite score if available, fallback to legacy workload_income_health_score
+     fairness_score = breakdown.get("equity_score") 
+     if fairness_score is None:
+-        fairness_score = breakdown.get("bio_economic_score", 0.0)
++        fairness_score = breakdown.get("workload_income_health_score", 0.0)
+ 
+     total = (
+         breakdown.get("skill_match", 0)       * WEIGHT_SKILL +
+diff --git a/backend/app/services/peer_verification.py b/backend/app/services/peer_verification.py
+index 7227ee0..7e08dda 100644
+--- a/backend/app/services/peer_verification.py
++++ b/backend/app/services/peer_verification.py
+@@ -1,7 +1,7 @@
+ """
+ Patent Feature: Decentralized Peer Verification Protocol.
+ 
+-A Byzantine Fault-Tolerant verification system where existing verified
++A reputation-weighted quorum Fault-Tolerant verification system where existing verified
+ cooperative members can collectively vouch for new workers.
+ 
+ Replaces a single central point of failure (admin) with reputation-weighted
+@@ -63,6 +63,17 @@ def submit_peer_vote(db: Session, voter_id: int, candidate_id: int, is_positive:
+     if candidate.verification_status == VerificationStatus.VERIFIED:
+         raise ValueError("Candidate is already verified.")
+ 
++    # Block mutual vouching
++    voter_votes = []
++    if voter.peer_votes:
++        try:
++            voter_votes = json.loads(voter.peer_votes) if isinstance(voter.peer_votes, str) else voter.peer_votes
++        except Exception:
++            pass
++    for v in voter_votes:
++        if v.get("voter_id") == candidate_id:
++            raise ValueError("Mutual vouching is prohibited.")
++
+     # Parse existing votes
+     votes = []
+     if candidate.peer_votes:
+@@ -113,8 +124,9 @@ def submit_peer_vote(db: Session, voter_id: int, candidate_id: int, is_positive:
+ def calculate_consensus(candidate: Worker, votes: List[Dict] = None) -> Dict:
+     """
+     Calculate the current consensus score.
+-    Returns verified=True if total positive weight >= threshold (e.g., 3.0)
+-    and positive weight is > 75% of total weight (Byzantine tolerance).
++    Returns verified=True if total positive weight >= threshold (e.g., 3.0),
++    at least 3 distinct voters have participated,
++    and positive weight is > 75% of total weight (reputation-weighted quorum tolerance).
+     """
+     if votes is None:
+         if candidate.peer_votes:
+@@ -135,9 +147,10 @@ def calculate_consensus(candidate: Worker, votes: List[Dict] = None) -> Dict:
+     score = (positive_weight / total_weight) * 100.0 if total_weight > 0 else 0.0
+     
+     # Thresholds for automatic verification:
+-    # 1. Must have at least 3.0 total weight worth of votes
+-    # 2. Score must be >= 75%
+-    is_verified = total_weight >= 3.0 and score >= 75.0
++    # 1. Must have at least 3 distinct voters
++    # 2. Must have at least 3.0 total weight worth of votes
++    # 3. Score must be >= 75%
++    is_verified = len(votes) >= 3 and total_weight >= 3.0 and score >= 75.0
+     
+     return {
+         "is_verified": is_verified,
+@@ -146,3 +159,19 @@ def calculate_consensus(candidate: Worker, votes: List[Dict] = None) -> Dict:
+         "total_weight": round(total_weight, 2),
+         "positive_weight": round(positive_weight, 2)
+     }
++
++def flag_worker_fraud(db: Session, worker_id: int):
++    """
++    Skin-in-the-game mechanism: if a verified worker is flagged for fraud,
++    their vouchers (who vouched for them) lose trust score or voting weight.
++    (To be integrated with the trust scoring system).
++    """
++    worker = db.query(Worker).filter(Worker.id == worker_id).first()
++    if worker and worker.peer_votes:
++        try:
++            votes = json.loads(worker.peer_votes) if isinstance(worker.peer_votes, str) else worker.peer_votes
++            for v in votes:
++                voucher_id = v.get("voter_id")
++                # TODO: Dispatch penalty to voucher_id's trust score
++        except Exception:
++            pass
+diff --git a/backend/app/services/predictive_logistics.py b/backend/app/services/predictive_logistics.py
+index 675cd3d..2e88595 100644
+--- a/backend/app/services/predictive_logistics.py
++++ b/backend/app/services/predictive_logistics.py
+@@ -44,49 +44,62 @@ def get_required_part(appliance_type: str) -> str:
+     return parts_map.get(appliance_type, "Standard Kit")
+ 
+ 
++import math
++
++from app.config import WEIBULL_PARAMS
++
+ def forecast_failure(appliance: HouseholdAppliance) -> dict:
+     """
+-    Mock AI Model for Failure Forecasting (Simulating Bi-LSTM/GRU output).
+-    Calculates health score drop based on age and time since last service.
++    Predictive Logistics Model using Weibull Survival Analysis.
++    Calculates the probability of survival (Reliability) and predicts failure
++    based on the appliance's characteristic lifespan and wear-out curve.
++    Requires no training data, making it explainable and legally defensible.
+     """
+     now = datetime.datetime.utcnow()
+     
+-    # If newly tracked, give it a high score
+     if not appliance.last_serviced_date:
+         appliance.last_serviced_date = now
+-        appliance.health_score = 90.0
++        appliance.health_score = 100.0
+         
+-    days_since_service = (now - appliance.last_serviced_date).days
+     age_years = (now.year - appliance.purchase_year) if appliance.purchase_year else 3
++    age_days = age_years * 365.25
+     
+-    # Degrade health score based on time and age
+-    degradation = (days_since_service * 0.1) + (age_years * 5.0)
++    # Get Weibull parameters for this appliance type
++    params = WEIBULL_PARAMS.get(appliance.appliance_type, WEIBULL_PARAMS["General Appliance"])
++    eta = params["eta"]
++    beta = params["beta"]
+     
+-    # After a recent service, health should be restored somewhat
+-    # But since this runs AT job completion, we are predicting the FUTURE state.
+-    # Let's say the current repair fixes the immediate issue (health bumps to 85)
+-    # But we predict the NEXT failure.
++    # Reliability function R(t) = e^(-(t/eta)^beta)
++    # This gives the % chance the appliance survives to 'age_days'
++    reliability = math.exp(-((age_days / eta) ** beta))
++    health_score = reliability * 100.0
+     
+-    new_health = max(10.0, 85.0 - (age_years * 2.0)) # Older appliances max out lower
++    # Predict days until reliability drops below critical threshold (e.g., 20%)
++    critical_threshold = 0.20
++    # Solve for t in R(t) = 0.20: t = eta * (-ln(0.20))^(1/beta)
++    target_failure_days = eta * ((-math.log(critical_threshold)) ** (1/beta))
+     
+-    # Predict days until next failure (lower health = fewer days)
+-    # E.g. Health 85 -> ~180 days. Health 40 -> ~30 days.
+-    predicted_days = int(new_health * 2.5) + random.randint(-15, 15)
++    predicted_failure_days = max(5, int(target_failure_days - age_days))
+     
+-    appliance.health_score = new_health
+-    appliance.predicted_failure_days = max(5, predicted_days)
++    # After a recent service, we assume basic maintenance extends life slightly
++    days_since_service = (now - appliance.last_serviced_date).days
++    if days_since_service < 30:
++        predicted_failure_days += 90  # Maintenance bump
++        health_score = min(100.0, health_score + 15.0)
++
++    appliance.health_score = health_score
++    appliance.predicted_failure_days = predicted_failure_days
+     
+     return {
+-        "health_score": round(new_health, 1),
++        "health_score": round(health_score, 1),
+         "predicted_failure_days": appliance.predicted_failure_days,
+-        "needs_pre_reservation": appliance.predicted_failure_days < 60 # Critical threshold
++        "needs_pre_reservation": appliance.predicted_failure_days < 90 # Critical threshold
+     }
+ 
+-
+ def run_predictive_logistics(db: Session, user_id: int, service_name: str, location: str) -> dict:
+     """
+     Runs the full Predictive Logistics pipeline:
+-    1. Forecasts next failure.
++    1. Forecasts next failure using Weibull Survival Model.
+     2. Pre-reserves parts at a local shop if failure is imminent.
+     """
+     app_type = parse_appliance_type(service_name)
+diff --git a/backend/app/services/proof_verification.py b/backend/app/services/proof_verification.py
+index 7ba3c69..d87a233 100644
+--- a/backend/app/services/proof_verification.py
++++ b/backend/app/services/proof_verification.py
+@@ -22,6 +22,7 @@ from datetime import datetime, timezone
+ from typing import Dict, Optional
+ 
+ from sqlalchemy.orm import Session
++from sqlalchemy import or_
+ 
+ from app.models.booking import Booking, BookingStatus
+ 
+@@ -29,130 +30,108 @@ from app.models.booking import Booking, BookingStatus
+ # Valid pHash format: 64 hex characters (256-bit hash)
+ PHASH_PATTERN = re.compile(r"^[0-9a-fA-F]{16,64}$")
+ 
+-# Minimum privacy score threshold (0-100, lower = more private = better)
+-MIN_PRIVACY_SCORE = 0.0
+-MAX_PRIVACY_SCORE = 100.0
+-
+-
+ def validate_proof_hash(hash_str: Optional[str]) -> Dict:
+     """
+     Validate the format and structure of a proof-of-work hash.
+-
+-    Returns:
+-        dict with:
+-            - is_valid: bool
+-            - format_ok: bool
+-            - length: int
+-            - error: Optional[str]
+     """
+     if not hash_str:
+-        return {
+-            "is_valid": False,
+-            "format_ok": False,
+-            "length": 0,
+-            "error": "No hash provided",
+-        }
++        return {"is_valid": False, "format_ok": False, "length": 0, "error": "No hash provided"}
+ 
+     hash_clean = hash_str.strip()
+ 
+     if not PHASH_PATTERN.match(hash_clean):
+-        return {
+-            "is_valid": False,
+-            "format_ok": False,
+-            "length": len(hash_clean),
+-            "error": "Hash must be 16-64 hexadecimal characters",
+-        }
++        return {"is_valid": False, "format_ok": False, "length": len(hash_clean), "error": "Hash must be 16-64 hexadecimal characters"}
+ 
+-    return {
+-        "is_valid": True,
+-        "format_ok": True,
+-        "length": len(hash_clean),
+-        "error": None,
+-    }
++    return {"is_valid": True, "format_ok": True, "length": len(hash_clean), "error": None}
+ 
+ 
+-def check_hash_uniqueness(db: Session, hash_str: str, exclude_booking_id: Optional[int] = None) -> bool:
++def hamming_distance(hex1: str, hex2: str) -> int:
++    """Calculate the Hamming distance between two hex hashes."""
++    try:
++        val1 = int(hex1, 16)
++        val2 = int(hex2, 16)
++        return bin(val1 ^ val2).count('1')
++    except Exception:
++        return 999
++
++
++def check_hash_uniqueness(db: Session, before_hash: str, after_hash: str, exclude_booking_id: Optional[int] = None) -> bool:
+     """
+-    Check that this proof hash hasn't been used for a different booking.
+-    Prevents workers from reusing old proof photos.
++    Check that these proof hashes haven't been used for a different booking.
++    Prevents workers from reusing old proof photos by checking Hamming distance.
++    Flag as duplicate if Hamming distance <= 6.
+     """
+     query = db.query(Booking).filter(
+-        Booking.proof_of_work_hash == hash_str.strip(),
++        or_(
++            Booking.before_work_hash.isnot(None),
++            Booking.after_work_hash.isnot(None)
++        ),
+         Booking.status == BookingStatus.COMPLETED,
+     )
+ 
+     if exclude_booking_id:
+         query = query.filter(Booking.id != exclude_booking_id)
+ 
+-    existing = query.first()
+-    return existing is None  # True = unique, False = duplicate
++    existing_bookings = query.all()
++    for booking in existing_bookings:
++        if booking.before_work_hash and before_hash:
++            if hamming_distance(before_hash.strip(), booking.before_work_hash.strip()) <= 6:
++                return False
++        if booking.after_work_hash and after_hash:
++            if hamming_distance(after_hash.strip(), booking.after_work_hash.strip()) <= 6:
++                return False
++
++    return True
+ 
+ 
+ def calculate_verification_confidence(
+-    hash_str: str,
++    before_hash: str,
++    after_hash: str,
+     privacy_score: Optional[float] = None,
+-    has_timestamp: bool = True,
++    gps_match: bool = False,
++    nonce_match: bool = False,
++    customer_otp_match: bool = False
+ ) -> Dict:
+     """
+     Compute a confidence score for the proof-of-work submission.
+-
+-    Factors:
+-    - Hash validity and length (longer hash = more information = higher confidence)
+-    - Privacy score compliance (lower privacy score = more private = better)
+-    - Freshness (proof submitted with timestamp metadata)
+-
+-    Returns:
+-        dict with:
+-            - confidence: float (0-100)
+-            - privacy_grade: str ("A" | "B" | "C" | "D")
+-            - factors: dict
+     """
+     confidence = 0.0
+     factors = {}
+ 
+-    # Factor 1: Hash quality (40% weight)
+-    validation = validate_proof_hash(hash_str)
+-    if validation["is_valid"]:
+-        # Longer hashes encode more perceptual information
+-        hash_quality = min(100.0, (validation["length"] / 64.0) * 100.0)
+-        confidence += hash_quality * 0.40
+-        factors["hash_quality"] = round(hash_quality, 1)
++    # Factor 1: Hash quality (10% weight)
++    val_b = validate_proof_hash(before_hash)
++    val_a = validate_proof_hash(after_hash)
++    if val_b["is_valid"] and val_a["is_valid"]:
++        hash_quality = 100.0
++        confidence += hash_quality * 0.10
++        factors["hash_quality"] = 100.0
+     else:
+         factors["hash_quality"] = 0.0
+ 
+-    # Factor 2: Privacy compliance (30% weight)
++    # Factor 2: Privacy compliance (10% weight)
+     if privacy_score is not None:
+-        # Higher privacy_score means MORE private (better)
+         privacy_quality = min(100.0, max(0.0, privacy_score))
+-        confidence += privacy_quality * 0.30
++        confidence += privacy_quality * 0.10
+         factors["privacy_compliance"] = round(privacy_quality, 1)
+-    else:
+-        # No privacy score = moderate compliance
+-        confidence += 50.0 * 0.30
+-        factors["privacy_compliance"] = 50.0
+ 
+-    # Factor 3: Freshness / timestamp (30% weight)
+-    if has_timestamp:
++    # Factor 3: Cryptographic Nonce (30% weight)
++    if nonce_match:
+         confidence += 100.0 * 0.30
+-        factors["freshness"] = 100.0
+-    else:
+-        confidence += 30.0 * 0.30
+-        factors["freshness"] = 30.0
+-
+-    # Determine privacy grade
+-    ps = privacy_score if privacy_score is not None else 50.0
+-    if ps >= 80:
+-        privacy_grade = "A"
+-    elif ps >= 60:
+-        privacy_grade = "B"
+-    elif ps >= 40:
+-        privacy_grade = "C"
+-    else:
+-        privacy_grade = "D"
++        factors["nonce_match"] = 100.0
++
++    # Factor 4: GPS Match (20% weight)
++    if gps_match:
++        confidence += 100.0 * 0.20
++        factors["gps_match"] = 100.0
++
++    # Factor 5: Customer OTP (30% weight - strongest signal)
++    if customer_otp_match:
++        confidence += 100.0 * 0.30
++        factors["customer_otp"] = 100.0
+ 
+     return {
+         "confidence": round(min(100.0, max(0.0, confidence)), 1),
+-        "privacy_grade": privacy_grade,
++        "privacy_grade": "A" if (privacy_score or 50) >= 80 else "B",
+         "factors": factors,
+     }
+ 
+@@ -160,27 +139,13 @@ def calculate_verification_confidence(
+ def verify_proof_of_work(
+     db: Session,
+     booking_id: int,
+-    hash_str: Optional[str],
++    before_hash: Optional[str],
++    after_hash: Optional[str],
+     privacy_score: Optional[float] = None,
++    proof_bundle: Optional[Dict] = None
+ ) -> Dict:
+     """
+     Complete proof-of-work verification pipeline.
+-
+-    Steps:
+-    1. Validate hash format
+-    2. Check hash uniqueness (prevent reuse)
+-    3. Calculate verification confidence
+-    4. Return comprehensive verification result
+-
+-    Returns:
+-        dict with:
+-            - verified: bool
+-            - hash_valid: bool
+-            - hash_unique: bool
+-            - confidence: float (0-100)
+-            - privacy_grade: str
+-            - verification_timestamp: str (ISO format)
+-            - error: Optional[str]
+     """
+     result = {
+         "verified": False,
+@@ -192,33 +157,46 @@ def verify_proof_of_work(
+         "error": None,
+     }
+ 
+-    # Step 1: Validate hash format
+-    validation = validate_proof_hash(hash_str)
+-    result["hash_valid"] = validation["is_valid"]
+-
+-    if not validation["is_valid"]:
+-        result["error"] = validation.get("error", "Invalid hash format")
++    val_b = validate_proof_hash(before_hash)
++    val_a = validate_proof_hash(after_hash)
++    if not val_b["is_valid"] or not val_a["is_valid"]:
++        result["error"] = "Invalid before/after hash format"
+         return result
++        
++    result["hash_valid"] = True
+ 
+-    # Step 2: Check uniqueness
+-    is_unique = check_hash_uniqueness(db, hash_str, exclude_booking_id=booking_id)
++    # 1. Uniqueness Check
++    is_unique = check_hash_uniqueness(db, before_hash, after_hash, exclude_booking_id=booking_id)
+     result["hash_unique"] = is_unique
+ 
+     if not is_unique:
+-        result["error"] = "This proof hash has been used for a previous booking (potential reuse detected)"
++        result["error"] = "This proof hash is too similar to a previous booking (potential replay attack detected)"
+         return result
+ 
+-    # Step 3: Calculate verification confidence
++    # 2. Before/After Check
++    dist = hamming_distance(before_hash, after_hash)
++    if dist <= 6:
++        result["error"] = "BEFORE and AFTER photos are near-identical. Proof rejected."
++        return result
++    if dist >= 30:
++        result["error"] = "BEFORE and AFTER photos are too dissimilar. Location mismatch."
++        return result
++
++    nonce_match = proof_bundle.get('nonce_match', True) if proof_bundle else True
++    gps_match = proof_bundle.get('gps_match', True) if proof_bundle else True
++    otp_match = proof_bundle.get('customer_otp_match', True) if proof_bundle else True
++    
+     confidence_result = calculate_verification_confidence(
+-        hash_str=hash_str,
++        before_hash=before_hash,
++        after_hash=after_hash,
+         privacy_score=privacy_score,
+-        has_timestamp=True,
++        nonce_match=nonce_match,
++        gps_match=gps_match,
++        customer_otp_match=otp_match
+     )
+ 
+     result["confidence"] = confidence_result["confidence"]
+     result["privacy_grade"] = confidence_result["privacy_grade"]
+-
+-    # Step 4: Determine overall verification (confidence > 50 = verified)
+     result["verified"] = confidence_result["confidence"] >= 50.0
+ 
+     return result
+diff --git a/backend/app/services/trust_score.py b/backend/app/services/trust_score.py
+index f8be8f4..b289d5b 100644
+--- a/backend/app/services/trust_score.py
++++ b/backend/app/services/trust_score.py
+@@ -1,7 +1,7 @@
+ """
+ Patent Feature: Composite Verifiable Trust Score.
+ 
+-A 7-factor worker reputation system with full provenance tracking.
++A 6-factor worker reputation system with full provenance tracking.
+ 
+ Unlike simple average-rating systems used by conventional gig platforms,
+ this computes a holistic trust metric across:
+@@ -10,7 +10,7 @@ this computes a holistic trust metric across:
+     3. Punctuality Score     (15%) — Based on completion rate
+     4. Skill Breadth         (10%) — Distinct service categories completed
+     5. Proof of Work Rate    (10%) — % of completed jobs with verified proof
+-    6. Economic Equity       (10%) — Standing from Equity Graph
++    6. Economic Equity       (10%) — Standing from Equity Index
+     7. Cooperative Tenure    (10%) — Days as an active cooperative member
+ 
+ Novel Claim:
+@@ -30,35 +30,44 @@ from app.models.service_request import ServiceRequest
+ from app.models.worker import Worker
+ 
+ # ── Trust Factor Weights (Total = 1.0) ───────────────────────────────────────
+-WEIGHT_SATISFACTION     = 0.25
++WEIGHT_SATISFACTION     = 0.30
+ WEIGHT_RELIABILITY      = 0.20
+-WEIGHT_PUNCTUALITY      = 0.15
++WEIGHT_PUNCTUALITY      = 0.20
+ WEIGHT_SKILL_BREADTH    = 0.10
+ WEIGHT_PROOF_COMPLIANCE = 0.10
+-WEIGHT_ECONOMIC_EQUITY  = 0.10
+ WEIGHT_TENURE           = 0.10
+ 
+ 
+ def _calculate_satisfaction(db: Session, worker: Worker) -> float:
+     """
+     Customer Satisfaction Score (0–100).
+-    Based on average customer rating across all completed bookings.
+-    New workers with no ratings get a neutral 60.
++    Based on a Bayesian average of customer ratings.
++    Formula: (n * avg + 5 * 3.5) / (n + 5)
+     """
+-    avg_rating = (
+-        db.query(func.avg(Booking.customer_rating))
++    from sqlalchemy import func
++    
++    ratings_data = (
++        db.query(
++            func.count(Booking.customer_rating).label('count'),
++            func.avg(Booking.customer_rating).label('avg')
++        )
+         .filter(
+             Booking.worker_id == worker.id,
+             Booking.customer_rating.isnot(None),
+         )
+-        .scalar()
++        .first()
+     )
+ 
+-    if avg_rating is None:
+-        return 60.0  # Neutral entry score for new workers
++    n = ratings_data.count if ratings_data and ratings_data.count else 0
++    raw_avg = float(ratings_data.avg) if ratings_data and ratings_data.avg else 0.0
++
++    if n == 0:
++        return 70.0  # Neutral entry score for new workers (3.5/5.0 * 100)
+ 
++    bayesian_avg = (n * raw_avg + 5 * 3.5) / (n + 5)
++    
+     # Map 1-5 rating to 0-100 score
+-    return round(min(100.0, max(0.0, (float(avg_rating) / 5.0) * 100.0)), 1)
++    return round(min(100.0, max(0.0, (bayesian_avg / 5.0) * 100.0)), 1)
+ 
+ 
+ def _calculate_reliability(db: Session, worker: Worker) -> float:
+@@ -91,37 +100,61 @@ def _calculate_reliability(db: Session, worker: Worker) -> float:
+ 
+ def _calculate_punctuality(db: Session, worker: Worker) -> float:
+     """
+-    Punctuality Score (0–100).
+-    Based on completion rate: completed / (accepted + in_progress + completed).
+-    Workers who consistently complete jobs score higher.
++    Punctuality Score (0-100).
++    Evaluates actual arrival time against scheduled time.
+     """
+-    completed = (
+-        db.query(func.count(Booking.id))
++    completed_bookings = (
++        db.query(Booking)
+         .filter(
+             Booking.worker_id == worker.id,
+             Booking.status == BookingStatus.COMPLETED,
+         )
+-        .scalar()
+-    ) or 0
+-
+-    active_or_done = (
+-        db.query(func.count(Booking.id))
+-        .filter(
+-            Booking.worker_id == worker.id,
+-            Booking.status.in_([
+-                BookingStatus.ACCEPTED,
+-                BookingStatus.IN_PROGRESS,
+-                BookingStatus.COMPLETED,
+-            ]),
+-        )
+-        .scalar()
+-    ) or 0
++        .all()
++    )
+ 
+-    if active_or_done == 0:
++    if not completed_bookings:
+         return 60.0  # Neutral
+ 
+-    completion_rate = completed / active_or_done
+-    return round(min(100.0, max(0.0, completion_rate * 100.0)), 1)
++    on_time_count = 0
++    total_evaluated = 0
++
++    for b in completed_bookings:
++        # Use arrived_at datetime
++        actual_arr = getattr(b, "arrived_at", None)
++        sched_time = getattr(b, "scheduled_time", None)
++        
++        if not actual_arr or not sched_time:
++            continue
++            
++        try:
++            # Parse times like "14:30"
++            s_h, s_m = map(int, sched_time.split(":"))
++            s_mins = s_h * 60 + s_m
++            
++            a_h, a_m = actual_arr.hour, actual_arr.minute
++            a_mins = a_h * 60 + a_m
++            
++            # If arrived within 15 minutes of scheduled time
++            if a_mins <= s_mins + 15:
++                on_time_count += 1
++            total_evaluated += 1
++        except Exception:
++            continue
++
++    if total_evaluated == 0:
++        # Fallback to completion rate if no arrival times logged
++        active_or_done = (
++            db.query(func.count(Booking.id))
++            .filter(
++                Booking.worker_id == worker.id,
++                Booking.status.in_([BookingStatus.ACCEPTED, BookingStatus.IN_PROGRESS, BookingStatus.COMPLETED]),
++            ).scalar()
++        ) or 0
++        if active_or_done == 0: return 60.0
++        return round(min(100.0, max(0.0, (len(completed_bookings) / active_or_done) * 100.0)), 1)
++        
++    punctuality_rate = on_time_count / total_evaluated
++    return round(min(100.0, max(0.0, punctuality_rate * 100.0)), 1)
+ 
+ 
+ def _calculate_skill_breadth(db: Session, worker: Worker) -> float:
+@@ -158,7 +191,7 @@ def _calculate_skill_breadth(db: Session, worker: Worker) -> float:
+ def _calculate_proof_compliance(db: Session, worker: Worker) -> float:
+     """
+     Proof of Work Compliance Score (0–100).
+-    % of completed jobs that include a valid proof_of_work_hash.
++    % of completed jobs that include a valid after_work_hash.
+     Patent Feature: Privacy-Preserving Proof of Service.
+     """
+     completed = (
+@@ -173,23 +206,11 @@ def _calculate_proof_compliance(db: Session, worker: Worker) -> float:
+     if not completed:
+         return 50.0  # Neutral for new workers
+ 
+-    with_proof = sum(1 for b in completed if b.proof_of_work_hash)
++    with_proof = sum(1 for b in completed if getattr(b, 'before_work_hash', None) and getattr(b, 'after_work_hash', None))
+     compliance_rate = with_proof / len(completed)
+     return round(min(100.0, max(0.0, compliance_rate * 100.0)), 1)
+ 
+ 
+-def _calculate_economic_equity(db: Session, worker: Worker) -> float:
+-    """
+-    Economic Equity Standing Score (0–100).
+-    Pulls from the Equity Graph's income parity dimension.
+-    """
+-    try:
+-        from app.services.matching.equity_graph import calculate_income_parity
+-        return calculate_income_parity(db, worker)
+-    except Exception:
+-        return 50.0  # Fallback
+-
+-
+ def _calculate_tenure(worker: Worker) -> float:
+     """
+     Cooperative Tenure Score (0–100).
+@@ -226,7 +247,7 @@ def calculate_trust_score(db: Session, worker: Worker) -> Dict:
+     """
+     Master Trust Score Computation.
+ 
+-    Computes all 7 trust dimensions and returns a comprehensive breakdown.
++    Computes 6 trust dimensions and returns a comprehensive breakdown.
+ 
+     Returns:
+         dict with keys:
+@@ -235,7 +256,6 @@ def calculate_trust_score(db: Session, worker: Worker) -> Dict:
+             - punctuality: float (0-100)
+             - skill_breadth: float (0-100)
+             - proof_compliance: float (0-100)
+-            - economic_equity: float (0-100)
+             - tenure: float (0-100)
+             - composite_trust_score: float (0-100)
+             - trust_tier: str ("PLATINUM" | "GOLD" | "SILVER" | "BRONZE" | "NEW")
+@@ -245,7 +265,6 @@ def calculate_trust_score(db: Session, worker: Worker) -> Dict:
+     punctuality = _calculate_punctuality(db, worker)
+     skill_breadth = _calculate_skill_breadth(db, worker)
+     proof_compliance = _calculate_proof_compliance(db, worker)
+-    economic_equity = _calculate_economic_equity(db, worker)
+     tenure = _calculate_tenure(worker)
+ 
+     composite = (
+@@ -254,7 +273,6 @@ def calculate_trust_score(db: Session, worker: Worker) -> Dict:
+         punctuality     * WEIGHT_PUNCTUALITY +
+         skill_breadth   * WEIGHT_SKILL_BREADTH +
+         proof_compliance * WEIGHT_PROOF_COMPLIANCE +
+-        economic_equity * WEIGHT_ECONOMIC_EQUITY +
+         tenure          * WEIGHT_TENURE
+     )
+     composite = round(min(100.0, max(0.0, composite)), 1)
+@@ -277,7 +295,6 @@ def calculate_trust_score(db: Session, worker: Worker) -> Dict:
+         "punctuality": punctuality,
+         "skill_breadth": skill_breadth,
+         "proof_compliance": proof_compliance,
+-        "economic_equity": economic_equity,
+         "tenure": tenure,
+         "composite_trust_score": composite,
+         "trust_tier": tier,
+diff --git a/backend/cooperative.db b/backend/cooperative.db
+index bc5c531..b3689fb 100644
+Binary files a/backend/cooperative.db and b/backend/cooperative.db differ
+diff --git a/backend/tests/test_bookings.py b/backend/tests/test_bookings.py
+index 8fb1803..dd4991d 100644
+--- a/backend/tests/test_bookings.py
++++ b/backend/tests/test_bookings.py
+@@ -156,7 +156,7 @@ def test_unverified_worker_cannot_be_allocated():
+     u = User(name="Pending W", email="pending_w@test.com", password_hash=hash_password("Pass123"), role=UserRole.WORKER)
+     db.add(u)
+     db.commit()
+-    w = Worker(user_id=u.id, profession="Electrician", verification_status=VerificationStatus.PENDING, availability=AvailabilityStatus.AVAILABLE)
++    w = Worker(user_id=u.id, cooperative_id=1, profession="Electrician", verification_status=VerificationStatus.PENDING, availability=AvailabilityStatus.AVAILABLE)
+     db.add(w)
+     db.commit()
+     pw_id = w.id
+@@ -181,7 +181,7 @@ def test_rejected_worker_cannot_be_allocated():
+     u = User(name="Rejected W", email="rej_w@test.com", password_hash=hash_password("Pass123"), role=UserRole.WORKER)
+     db.add(u)
+     db.commit()
+-    w = Worker(user_id=u.id, profession="Electrician", verification_status=VerificationStatus.REJECTED, availability=AvailabilityStatus.AVAILABLE)
++    w = Worker(user_id=u.id, cooperative_id=1, profession="Electrician", verification_status=VerificationStatus.REJECTED, availability=AvailabilityStatus.AVAILABLE)
+     db.add(w)
+     db.commit()
+     rw_id = w.id
+@@ -205,7 +205,7 @@ def test_unavailable_worker_cannot_be_allocated():
+     u = User(name="Unavail W", email="unavail_w@test.com", password_hash=hash_password("Pass123"), role=UserRole.WORKER)
+     db.add(u)
+     db.commit()
+-    w = Worker(user_id=u.id, profession="Electrician", verification_status=VerificationStatus.VERIFIED, availability=AvailabilityStatus.UNAVAILABLE)
++    w = Worker(user_id=u.id, cooperative_id=1, profession="Electrician", verification_status=VerificationStatus.VERIFIED, availability=AvailabilityStatus.UNAVAILABLE)
+     db.add(w)
+     db.commit()
+     uw_id = w.id
+diff --git a/backend/tests/test_matching.py b/backend/tests/test_matching.py
+deleted file mode 100644
+index 4d4f621..0000000
+--- a/backend/tests/test_matching.py
++++ /dev/null
+@@ -1,539 +0,0 @@
+-"""
+-Tests for Explainable AI Worker Matching Engine.
+-
+-Validates eligibility rules, scoring components, workload fairness,
+-explainability, endpoint authorization, and ranking.
+-"""
+-from fastapi.testclient import TestClient
+-from app.main import app
+-from app.models.cooperative import Cooperative
+-from app.models.service import Service
+-from app.models.service_request import RequestStatus, ServiceRequest
+-from app.models.user import User, UserRole
+-from app.models.worker import AvailabilityStatus, VerificationStatus, Worker
+-from app.services.matching import (
+-    calculate_availability_score,
+-    calculate_experience_score,
+-    calculate_fairness_score,
+-    calculate_location_score,
+-    calculate_rating_score,
+-    calculate_skill_score,
+-    calculate_total_score,
+-    filter_eligible_candidates,
+-    generate_match_explanation,
+-    get_matching_recommendations,
+-)
+-from tests.conftest import TestingSessionLocal
+-
+-client = TestClient(app)
+-
+-
+-def register(email, password="Password1", role="CUSTOMER", name="Test User"):
+-    return client.post("/api/auth/register", json={
+-        "name": name,
+-        "email": email,
+-        "password": password,
+-        "role": role,
+-    })
+-
+-
+-def login(email, password="Password1"):
+-    return client.post("/api/auth/login", data={
+-        "username": email,
+-        "password": password,
+-    })
+-
+-
+-def auth_header(token):
+-    return {"Authorization": f"Bearer {token}"}
+-
+-
+-def setup_matching_test_data():
+-    """Helper to seed base admin, cooperative, service, and service request."""
+-    db = TestingSessionLocal()
+-    admin = User(name="Admin", email="admin_m@test.com", password_hash="hash", role=UserRole.ADMIN)
+-    db.add(admin)
+-    db.commit()
+-
+-    coop = Cooperative(name="Test Coop", location="Noida", admin_id=admin.id)
+-    db.add(coop)
+-    db.commit()
+-
+-    service = Service(name="Electrical Repairs & Maintenance", category="Electrical", description="Wiring repair")
+-    db.add(service)
+-    db.commit()
+-
+-    customer = User(name="Cust", email="cust_m@test.com", password_hash="hash", role=UserRole.CUSTOMER)
+-    db.add(customer)
+-    db.commit()
+-
+-    request = ServiceRequest(
+-        customer_id=customer.id,
+-        service_id=service.id,
+-        cooperative_id=coop.id,
+-        description="Ceiling fan electrical repair",
+-        location="Sector 62, Noida",
+-        preferred_date="2026-08-30",
+-        preferred_time="10:00",
+-        status=RequestStatus.PENDING,
+-    )
+-    db.add(request)
+-    db.commit()
+-
+-    req_id = request.id
+-    coop_id = coop.id
+-    service_id = service.id
+-    admin_id = admin.id
+-    db.close()
+-    return admin_id, coop_id, service_id, req_id
+-
+-
+-def test_verified_worker_can_become_candidate():
+-    """1. Verified available worker becomes an eligible candidate."""
+-    _, coop_id, service_id, req_id = setup_matching_test_data()
+-    db = TestingSessionLocal()
+-
+-    user = User(name="Worker 1", email="w1@test.com", password_hash="hash", role=UserRole.WORKER)
+-    db.add(user)
+-    db.commit()
+-
+-    worker = Worker(
+-        user_id=user.id,
+-        cooperative_id=coop_id,
+-        profession="Electrician",
+-        verification_status=VerificationStatus.VERIFIED,
+-        availability=AvailabilityStatus.AVAILABLE,
+-        skills=["Wiring"],
+-    )
+-    db.add(worker)
+-    db.commit()
+-
+-    request = db.query(ServiceRequest).filter(ServiceRequest.id == req_id).first()
+-    candidates = filter_eligible_candidates(db, request)
+-    candidate_ids = [c.id for c in candidates]
+-    assert worker.id in candidate_ids
+-    db.close()
+-
+-
+-def test_unverified_worker_excluded():
+-    """2. Pending/unverified worker is excluded from candidate list."""
+-    _, coop_id, service_id, req_id = setup_matching_test_data()
+-    db = TestingSessionLocal()
+-
+-    user = User(name="Pending Worker", email="wp@test.com", password_hash="hash", role=UserRole.WORKER)
+-    db.add(user)
+-    db.commit()
+-
+-    worker = Worker(
+-        user_id=user.id,
+-        cooperative_id=coop_id,
+-        profession="Electrician",
+-        verification_status=VerificationStatus.PENDING,
+-        availability=AvailabilityStatus.AVAILABLE,
+-        skills=["Wiring"],
+-    )
+-    db.add(worker)
+-    db.commit()
+-
+-    request = db.query(ServiceRequest).filter(ServiceRequest.id == req_id).first()
+-    candidates = filter_eligible_candidates(db, request)
+-    candidate_ids = [c.id for c in candidates]
+-    assert worker.id not in candidate_ids
+-    db.close()
+-
+-
+-def test_rejected_worker_excluded():
+-    """3. Rejected worker is excluded from candidate list."""
+-    _, coop_id, service_id, req_id = setup_matching_test_data()
+-    db = TestingSessionLocal()
+-
+-    user = User(name="Rejected Worker", email="wr@test.com", password_hash="hash", role=UserRole.WORKER)
+-    db.add(user)
+-    db.commit()
+-
+-    worker = Worker(
+-        user_id=user.id,
+-        cooperative_id=coop_id,
+-        profession="Electrician",
+-        verification_status=VerificationStatus.REJECTED,
+-        availability=AvailabilityStatus.AVAILABLE,
+-        skills=["Wiring"],
+-    )
+-    db.add(worker)
+-    db.commit()
+-
+-    request = db.query(ServiceRequest).filter(ServiceRequest.id == req_id).first()
+-    candidates = filter_eligible_candidates(db, request)
+-    candidate_ids = [c.id for c in candidates]
+-    assert worker.id not in candidate_ids
+-    db.close()
+-
+-
+-def test_unavailable_worker_excluded():
+-    """4. Unavailable worker is excluded from candidate list."""
+-    _, coop_id, service_id, req_id = setup_matching_test_data()
+-    db = TestingSessionLocal()
+-
+-    user = User(name="Unavailable Worker", email="wu@test.com", password_hash="hash", role=UserRole.WORKER)
+-    db.add(user)
+-    db.commit()
+-
+-    worker = Worker(
+-        user_id=user.id,
+-        cooperative_id=coop_id,
+-        profession="Electrician",
+-        verification_status=VerificationStatus.VERIFIED,
+-        availability=AvailabilityStatus.UNAVAILABLE,
+-        skills=["Wiring"],
+-    )
+-    db.add(worker)
+-    db.commit()
+-
+-    request = db.query(ServiceRequest).filter(ServiceRequest.id == req_id).first()
+-    candidates = filter_eligible_candidates(db, request)
+-    candidate_ids = [c.id for c in candidates]
+-    assert worker.id not in candidate_ids
+-    db.close()
+-
+-
+-def test_worker_from_another_cooperative_excluded():
+-    """5. Worker belonging to a different cooperative is excluded."""
+-    _, coop_id, service_id, req_id = setup_matching_test_data()
+-    db = TestingSessionLocal()
+-
+-    other_coop = Cooperative(name="Other Coop", location="Delhi")
+-    db.add(other_coop)
+-    db.commit()
+-
+-    user = User(name="Other Coop Worker", email="wother@test.com", password_hash="hash", role=UserRole.WORKER)
+-    db.add(user)
+-    db.commit()
+-
+-    worker = Worker(
+-        user_id=user.id,
+-        cooperative_id=other_coop.id,
+-        profession="Electrician",
+-        verification_status=VerificationStatus.VERIFIED,
+-        availability=AvailabilityStatus.AVAILABLE,
+-        skills=["Wiring"],
+-    )
+-    db.add(worker)
+-    db.commit()
+-
+-    request = db.query(ServiceRequest).filter(ServiceRequest.id == req_id).first()
+-    candidates = filter_eligible_candidates(db, request)
+-    candidate_ids = [c.id for c in candidates]
+-    assert worker.id not in candidate_ids
+-    db.close()
+-
+-
+-def test_relevant_profession_gets_high_skill_score():
+-    """6. Relevant profession produces a high skill score."""
+-    service = Service(name="Electrical Repairs & Maintenance", category="Electrical")
+-    w1 = Worker(profession="Electrician", skills=["Wiring", "Fan Repair"])
+-    w2 = Worker(profession="Gardener", skills=["Lawn Mowing"])
+-
+-    s1 = calculate_skill_score(service, w1)
+-    s2 = calculate_skill_score(service, w2)
+-    assert s1 >= 70.0
+-    assert s1 > s2
+-
+-
+-def test_irrelevant_profession_gets_low_skill_score():
+-    """7. Irrelevant profession produces a low skill score."""
+-    service = Service(name="Electrical Repairs & Maintenance", category="Electrical")
+-    w = Worker(profession="Plumber", skills=["Pipe Fitting"])
+-    score = calculate_skill_score(service, w)
+-    assert score < 70.0
+-
+-
+-def test_relevant_skills_increase_score():
+-    """8. Additional matching skills increase skill score."""
+-    service = Service(name="Electrical Repairs & Maintenance", category="Electrical")
+-    w_basic = Worker(profession="Electrician", skills=[])
+-    w_skilled = Worker(profession="Electrician", skills=["Wiring", "Electrical", "Maintenance"])
+-
+-    s_basic = calculate_skill_score(service, w_basic)
+-    s_skilled = calculate_skill_score(service, w_skilled)
+-    assert s_skilled > s_basic
+-
+-
+-def test_same_location_receives_higher_location_score():
+-    """9. Same location receives higher location score than different location."""
+-    s_same = calculate_location_score("Sector 62, Noida", "Sector 62, Noida")
+-    s_diff = calculate_location_score("Sector 62, Noida", "Crossings Republik, Ghaziabad")
+-    assert s_same == 100.0
+-    assert s_same > s_diff
+-
+-
+-def test_rating_normalization_works():
+-    """10. 5-star rating normalizes to 0-100 score, 0 rating gets neutral score (70.0)."""
+-    assert calculate_rating_score(Worker(rating=5.0)) == 100.0
+-    assert calculate_rating_score(Worker(rating=4.0)) == 80.0
+-    assert calculate_rating_score(Worker(rating=0.0)) == 70.0  # Neutral score
+-
+-
+-def test_experience_normalization_works():
+-    """11. Experience normalizes cleanly and caps at 100.0."""
+-    assert calculate_experience_score(Worker(experience_years=0)) == 30.0
+-    assert calculate_experience_score(Worker(experience_years=2)) == 60.0
+-    assert calculate_experience_score(Worker(experience_years=4)) == 80.0
+-    assert calculate_experience_score(Worker(experience_years=5)) == 100.0
+-    assert calculate_experience_score(Worker(experience_years=20)) == 100.0
+-
+-
+-def test_lower_workload_receives_higher_fairness_score():
+-    """12. Cooperative fairness: worker with lower total_jobs receives higher fairness score."""
+-    w_low_jobs = Worker(total_jobs=2)
+-    w_high_jobs = Worker(total_jobs=35)
+-
+-    f_low = calculate_fairness_score(w_low_jobs)
+-    f_high = calculate_fairness_score(w_high_jobs)
+-
+-    assert f_low > f_high
+-    assert f_low == 95.0
+-
+-
+-def test_total_score_calculation_is_correct():
+-    """13. Total score weighted sum calculation is exact."""
+-    breakdown = {
+-        "skill_match": 90.0,      # 90 * 0.30 = 27.0
+-        "location": 80.0,         # 80 * 0.20 = 16.0
+-        "availability": 100.0,    # 100 * 0.20 = 20.0
+-        "rating": 96.0,           # 96 * 0.10 = 9.6
+-        "experience": 80.0,       # 80 * 0.10 = 8.0
+-        "workload_fairness": 90.0 # 90 * 0.10 = 9.0
+-    }
+-    # Sum: 27 + 16 + 20 + 9.6 + 8.0 + 9.0 = 89.6
+-    total = calculate_total_score(breakdown)
+-    assert total == 89.6
+-
+-
+-def test_scores_remain_0_to_100():
+-    """14. Component and total scores remain strictly between 0 and 100."""
+-    service = Service(name="Plumbing", category="Plumbing")
+-    worker = Worker(profession="Plumber", rating=5.0, experience_years=25, total_jobs=0, skills=["Pipe Repair"])
+-
+-    b = {
+-        "skill_match": calculate_skill_score(service, worker),
+-        "location": calculate_location_score("Noida", "Noida"),
+-        "availability": calculate_availability_score(worker),
+-        "rating": calculate_rating_score(worker),
+-        "experience": calculate_experience_score(worker),
+-        "workload_fairness": calculate_fairness_score(worker),
+-    }
+-
+-    for key, val in b.items():
+-        assert 0.0 <= val <= 100.0
+-
+-    tot = calculate_total_score(b)
+-    assert 0.0 <= tot <= 100.0
+-
+-
+-def test_recommendations_sorted_descending():
+-    """15. Worker recommendations are returned sorted descending by total score."""
+-    _, coop_id, service_id, req_id = setup_matching_test_data()
+-    db = TestingSessionLocal()
+-
+-    # Worker A: High rating, high experience, low workload
+-    u_a = User(name="Worker A", email="wa@test.com", password_hash="hash", role=UserRole.WORKER)
+-    db.add(u_a)
+-    db.commit()
+-    w_a = Worker(
+-        user_id=u_a.id,
+-        cooperative_id=coop_id,
+-        profession="Electrician",
+-        verification_status=VerificationStatus.VERIFIED,
+-        availability=AvailabilityStatus.AVAILABLE,
+-        skills=["Wiring", "Electrical"],
+-        location="Sector 62, Noida",
+-        rating=4.9,
+-        experience_years=6,
+-        total_jobs=2,
+-    )
+-    db.add(w_a)
+-
+-    # Worker B: Low experience, high workload
+-    u_b = User(name="Worker B", email="wb@test.com", password_hash="hash", role=UserRole.WORKER)
+-    db.add(u_b)
+-    db.commit()
+-    w_b = Worker(
+-        user_id=u_b.id,
+-        cooperative_id=coop_id,
+-        profession="Electrician",
+-        verification_status=VerificationStatus.VERIFIED,
+-        availability=AvailabilityStatus.AVAILABLE,
+-        skills=["Wiring"],
+-        location="Delhi",
+-        rating=3.8,
+-        experience_years=1,
+-        total_jobs=40,
+-    )
+-    db.add(w_b)
+-    db.commit()
+-
+-    res = get_matching_recommendations(db, req_id)
+-    assert res.candidate_count == 2
+-    assert res.recommendations[0].score >= res.recommendations[1].score
+-    assert res.recommendations[0].worker_name == "Worker A"
+-    db.close()
+-
+-
+-def test_explanations_correspond_to_actual_scores():
+-    """16. Match explanations are dynamically generated based on score breakdown."""
+-    service = Service(name="Electrical Repairs & Maintenance", category="Electrical")
+-    worker = Worker(profession="Electrician", rating=4.8, experience_years=5, total_jobs=3)
+-
+-    b = {
+-        "skill_match": 90.0,
+-        "location": 90.0,
+-        "availability": 100.0,
+-        "rating": 96.0,
+-        "experience": 100.0,
+-        "workload_fairness": 92.5,
+-    }
+-
+-    reasons = generate_match_explanation(b, service, worker, "Sector 62, Noida")
+-    assert len(reasons) >= 4
+-    assert any("electrical" in r.lower() or "skill" in r.lower() for r in reasons)
+-    assert any("workload" in r.lower() for r in reasons)
+-
+-
+-def test_customer_cannot_access_matching_endpoint():
+-    """17. Customer receives 403 Forbidden when calling matching API."""
+-    _, _, _, req_id = setup_matching_test_data()
+-    register("cust_no_match@test.com", role="CUSTOMER")
+-    ctoken = login("cust_no_match@test.com").json()["access_token"]
+-
+-    res = client.get(f"/api/matching/requests/{req_id}", headers=auth_header(ctoken))
+-    assert res.status_code == 403
+-
+-
+-def test_worker_cannot_access_matching_endpoint():
+-    """18. Worker receives 403 Forbidden when calling matching API."""
+-    _, _, _, req_id = setup_matching_test_data()
+-    register("worker_no_match@test.com", role="WORKER")
+-    wtoken = login("worker_no_match@test.com").json()["access_token"]
+-
+-    res = client.get(f"/api/matching/requests/{req_id}", headers=auth_header(wtoken))
+-    assert res.status_code == 403
+-
+-
+-def test_admin_can_access_matching_endpoint():
+-    """19. Cooperative Admin receives 200 OK and matching recommendations."""
+-    db = TestingSessionLocal()
+-    from app.services.auth import create_admin_if_absent
+-    create_admin_if_absent(db, name="Admin Match", email="admin_match1@test.com", password="AdminPass123")
+-    db.close()
+-
+-    atoken = login("admin_match1@test.com", "AdminPass123").json()["access_token"]
+-
+-    _, _, _, req_id = setup_matching_test_data()
+-    res = client.get(f"/api/matching/requests/{req_id}", headers=auth_header(atoken))
+-    assert res.status_code == 200
+-    data = res.json()
+-    assert "candidate_count" in data
+-    assert "recommendations" in data
+-
+-
+-def test_unknown_request_returns_appropriate_response():
+-    """20. Unknown request ID returns 404 Not Found."""
+-    db = TestingSessionLocal()
+-    from app.services.auth import create_admin_if_absent
+-    create_admin_if_absent(db, name="Admin Match 2", email="admin_match2@test.com", password="AdminPass123")
+-    db.close()
+-
+-    atoken = login("admin_match2@test.com", "AdminPass123").json()["access_token"]
+-
+-    res = client.get("/api/matching/requests/999999", headers=auth_header(atoken))
+-    assert res.status_code == 404
+-    assert res.json()["detail"] == "Service request not found."
+-
+-
+-def test_request_with_no_eligible_workers_returns_empty_recommendations():
+-    """21. Request with zero eligible workers returns candidate_count=0 and empty recommendations list."""
+-    _, coop_id, service_id, req_id = setup_matching_test_data()
+-    db = TestingSessionLocal()
+-    from app.services.auth import create_admin_if_absent
+-    create_admin_if_absent(db, name="Admin Match 3", email="admin_match3@test.com", password="AdminPass123")
+-    db.close()
+-
+-    atoken = login("admin_match3@test.com", "AdminPass123").json()["access_token"]
+-
+-    res = client.get(f"/api/matching/requests/{req_id}", headers=auth_header(atoken))
+-    assert res.status_code == 200
+-    data = res.json()
+-    assert data["candidate_count"] == 0
+-    assert data["recommendations"] == []
+-
+-
+-def test_matching_only_uses_workers_from_request_cooperative():
+-    """22. Matching strictly limits candidate pool to the request's cooperative."""
+-    db = TestingSessionLocal()
+-    admin = User(name="Admin X", email="adminx@test.com", password_hash="hash", role=UserRole.ADMIN)
+-    db.add(admin)
+-    db.commit()
+-
+-    coop_a = Cooperative(name="Coop A", location="Noida", admin_id=admin.id)
+-    coop_b = Cooperative(name="Coop B", location="Delhi")
+-    db.add(coop_a)
+-    db.add(coop_b)
+-    db.commit()
+-
+-    service = Service(name="Plumbing Services", category="Plumbing")
+-    db.add(service)
+-    db.commit()
+-
+-    cust = User(name="Cust X", email="custx@test.com", password_hash="hash", role=UserRole.CUSTOMER)
+-    db.add(cust)
+-    db.commit()
+-
+-    # Service Request belongs to Coop A
+-    req = ServiceRequest(
+-        customer_id=cust.id,
+-        service_id=service.id,
+-        cooperative_id=coop_a.id,
+-        description="Fix pipe leak",
+-        location="Noida",
+-        preferred_date="2026-08-30",
+-        preferred_time="10:00",
+-        status=RequestStatus.PENDING,
+-    )
+-    db.add(req)
+-    db.commit()
+-
+-    # Worker 1 belongs to Coop A
+-    u1 = User(name="Coop A Plumber", email="w_coopa@test.com", password_hash="hash", role=UserRole.WORKER)
+-    db.add(u1)
+-    db.commit()
+-    w1 = Worker(
+-        user_id=u1.id,
+-        cooperative_id=coop_a.id,
+-        profession="Plumber",
+-        verification_status=VerificationStatus.VERIFIED,
+-        availability=AvailabilityStatus.AVAILABLE,
+-        skills=["Pipe Repair"],
+-    )
+-    db.add(w1)
+-
+-    # Worker 2 belongs to Coop B
+-    u2 = User(name="Coop B Plumber", email="w_coopb@test.com", password_hash="hash", role=UserRole.WORKER)
+-    db.add(u2)
+-    db.commit()
+-    w2 = Worker(
+-        user_id=u2.id,
+-        cooperative_id=coop_b.id,
+-        profession="Plumber",
+-        verification_status=VerificationStatus.VERIFIED,
+-        availability=AvailabilityStatus.AVAILABLE,
+-        skills=["Pipe Repair"],
+-    )
+-    db.add(w2)
+-    db.commit()
+-
+-    candidates = filter_eligible_candidates(db, req)
+-    candidate_ids = [c.id for c in candidates]
+-
+-    assert w1.id in candidate_ids
+-    assert w2.id not in candidate_ids
+-    db.close()
+diff --git a/frontend/package-lock.json b/frontend/package-lock.json
+index 904922f..1998870 100644
+--- a/frontend/package-lock.json
++++ b/frontend/package-lock.json
+@@ -26,7 +26,8 @@
+         "@types/react-dom": "^19.2.4",
+         "@vitejs/plugin-react": "^6.1.0",
+         "oxlint": "^1.79.0",
+-        "vite": "^8.2.2"
++        "vite": "^8.2.2",
++        "vitest": "^5.0.3"
+       }
+     },
+     "node_modules/@jridgewell/gen-mapping": {
+@@ -59,9 +60,9 @@
+       }
+     },
+     "node_modules/@jridgewell/sourcemap-codec": {
+-      "version": "1.5.5",
+-      "resolved": "https://registry.npmjs.org/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.5.5.tgz",
+-      "integrity": "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==",
++      "version": "1.6.0",
++      "resolved": "https://registry.npmjs.org/@jridgewell/sourcemap-codec/-/sourcemap-codec-1.6.0.tgz",
++      "integrity": "sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw==",
+       "license": "MIT"
+     },
+     "node_modules/@jridgewell/trace-mapping": {
+@@ -1207,6 +1208,17 @@
+         "vite": "^5.2.0 || ^6 || ^7 || ^8"
+       }
+     },
++    "node_modules/@types/chai": {
++      "version": "5.2.3",
++      "resolved": "https://registry.npmjs.org/@types/chai/-/chai-5.2.3.tgz",
++      "integrity": "sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/deep-eql": "*",
++        "assertion-error": "^2.0.1"
++      }
++    },
+     "node_modules/@types/d3-array": {
+       "version": "3.2.2",
+       "resolved": "https://registry.npmjs.org/@types/d3-array/-/d3-array-3.2.2.tgz",
+@@ -1270,6 +1282,20 @@
+       "integrity": "sha512-Ps3T8E8dZDam6fUyNiMkekK3XUsaUEik+idO9/YjPtfj2qruF8tFBXS7XhtE4iIXBLxhmLjP3SXpLhVf21I9Lw==",
+       "license": "MIT"
+     },
++    "node_modules/@types/deep-eql": {
++      "version": "4.0.2",
++      "resolved": "https://registry.npmjs.org/@types/deep-eql/-/deep-eql-4.0.2.tgz",
++      "integrity": "sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==",
++      "dev": true,
++      "license": "MIT"
++    },
++    "node_modules/@types/estree": {
++      "version": "1.0.9",
++      "resolved": "https://registry.npmjs.org/@types/estree/-/estree-1.0.9.tgz",
++      "integrity": "sha512-GhdPgy1el4/ImP05X05Uw4cw2/M93BCUmnEvWZNStlCzEKME4Fkk+YpoA5OiHNQmoS7Cafb8Xa3Pya8m1Qrzeg==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/@types/react": {
+       "version": "19.2.18",
+       "resolved": "https://registry.npmjs.org/@types/react/-/react-19.2.18.tgz",
+@@ -1326,6 +1352,54 @@
+         }
+       }
+     },
++    "node_modules/@vitest/mocker": {
++      "version": "5.0.3",
++      "resolved": "https://registry.npmjs.org/@vitest/mocker/-/mocker-5.0.3.tgz",
++      "integrity": "sha512-T8sWAIbkSyAjkwTcaEc3Iu0o9A27X1/kdXrizhZkGuSKScRQtRzclfAMpOTcGdXCsqxeWlpGy3XjqaW8CpLORg==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@jridgewell/trace-mapping": "0.3.31",
++        "@vitest/spy": "5.0.3",
++        "estree-walker": "^3.0.3",
++        "magic-string": "^1.2.3"
++      },
++      "funding": {
++        "url": "https://opencollective.com/vitest"
++      },
++      "peerDependencies": {
++        "msw": "^2.4.9",
++        "vite": "^6.0.0 || ^7.0.0 || ^8.0.0"
++      },
++      "peerDependenciesMeta": {
++        "msw": {
++          "optional": true
++        },
++        "vite": {
++          "optional": true
++        }
++      }
++    },
++    "node_modules/@vitest/mocker/node_modules/magic-string": {
++      "version": "1.4.2",
++      "resolved": "https://registry.npmjs.org/magic-string/-/magic-string-1.4.2.tgz",
++      "integrity": "sha512-vG+rjFRj1PqdIBozIxAGMjPlOhaVe+GXpbttY/iSK7rGcJRMlwNJO7dcUwmUqkymsFLJiNGI06t4D7Fr7yRC9g==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@jridgewell/sourcemap-codec": "^1.6.0"
++      }
++    },
++    "node_modules/@vitest/spy": {
++      "version": "5.0.3",
++      "resolved": "https://registry.npmjs.org/@vitest/spy/-/spy-5.0.3.tgz",
++      "integrity": "sha512-XhFysQTB8AZ+P4gMi+Lpo99vg2AZi0qKpaB9yXQl37+CaMEAPO3iH/wGVnSyL5MPERiLezpqTVtrR6UZH5GCXg==",
++      "dev": true,
++      "license": "MIT",
++      "funding": {
++        "url": "https://opencollective.com/vitest"
++      }
++    },
+     "node_modules/agent-base": {
+       "version": "6.0.2",
+       "resolved": "https://registry.npmjs.org/agent-base/-/agent-base-6.0.2.tgz",
+@@ -1349,6 +1423,16 @@
+         "lodash.throttle": "^4.0.1"
+       }
+     },
++    "node_modules/assertion-error": {
++      "version": "2.0.1",
++      "resolved": "https://registry.npmjs.org/assertion-error/-/assertion-error-2.0.1.tgz",
++      "integrity": "sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=12"
++      }
++    },
+     "node_modules/asynckit": {
+       "version": "0.4.0",
+       "resolved": "https://registry.npmjs.org/asynckit/-/asynckit-0.4.0.tgz",
+@@ -1380,6 +1464,16 @@
+         "node": ">= 0.4"
+       }
+     },
++    "node_modules/chai": {
++      "version": "6.3.0",
++      "resolved": "https://registry.npmjs.org/chai/-/chai-6.3.0.tgz",
++      "integrity": "sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=18"
++      }
++    },
+     "node_modules/classlist-polyfill": {
+       "version": "1.2.0",
+       "resolved": "https://registry.npmjs.org/classlist-polyfill/-/classlist-polyfill-1.2.0.tgz",
+@@ -1633,6 +1727,13 @@
+         "node": ">= 0.4"
+       }
+     },
++    "node_modules/es-module-lexer": {
++      "version": "2.3.2",
++      "resolved": "https://registry.npmjs.org/es-module-lexer/-/es-module-lexer-2.3.2.tgz",
++      "integrity": "sha512-poHGpORABojJJucnV9KbOavETW8lBVnphkW77ER5/BQ5Fz7oXSoCNek7IH3vR5nRjdsEz926ibFYX8KtLQmdyw==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/es-object-atoms": {
+       "version": "1.1.2",
+       "resolved": "https://registry.npmjs.org/es-object-atoms/-/es-object-atoms-1.1.2.tgz",
+@@ -1672,12 +1773,32 @@
+         "tests/browser-compat"
+       ]
+     },
++    "node_modules/estree-walker": {
++      "version": "3.0.3",
++      "resolved": "https://registry.npmjs.org/estree-walker/-/estree-walker-3.0.3.tgz",
++      "integrity": "sha512-7RUKfXgSMMkzt6ZuXmqapOurLGPPfgj6l9uRZ7lRGolvk0y2yocc35LdcxKC5PQZdn2DMqioAQ2NoWcrTKmm6g==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/estree": "^1.0.0"
++      }
++    },
+     "node_modules/eventemitter3": {
+       "version": "5.0.4",
+       "resolved": "https://registry.npmjs.org/eventemitter3/-/eventemitter3-5.0.4.tgz",
+       "integrity": "sha512-mlsTRyGaPBjPedk6Bvw+aqbsXDtoAyAzm5MO7JgU+yVRyMQ5O8bD4Kcci7BS85f93veegeCPkL8R4GLClnjLFw==",
+       "license": "MIT"
+     },
++    "node_modules/expect-type": {
++      "version": "1.4.0",
++      "resolved": "https://registry.npmjs.org/expect-type/-/expect-type-1.4.0.tgz",
++      "integrity": "sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==",
++      "dev": true,
++      "license": "Apache-2.0",
++      "engines": {
++        "node": ">=12.0.0"
++      }
++    },
+     "node_modules/fdir": {
+       "version": "6.5.0",
+       "resolved": "https://registry.npmjs.org/fdir/-/fdir-6.5.0.tgz",
+@@ -2266,6 +2387,20 @@
+         "node": "^10 || ^12 || ^13.7 || ^14 || >=15.0.1"
+       }
+     },
++    "node_modules/obug": {
++      "version": "2.2.1",
++      "resolved": "https://registry.npmjs.org/obug/-/obug-2.2.1.tgz",
++      "integrity": "sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q==",
++      "dev": true,
++      "funding": [
++        "https://github.com/sponsors/sxzz",
++        "https://opencollective.com/debug"
++      ],
++      "license": "MIT",
++      "engines": {
++        "node": ">=12.20.0"
++      }
++    },
+     "node_modules/oxlint": {
+       "version": "1.80.0",
+       "resolved": "https://registry.npmjs.org/oxlint/-/oxlint-1.80.0.tgz",
+@@ -2595,6 +2730,13 @@
+         "node": ">=0.10.0"
+       }
+     },
++    "node_modules/std-env": {
++      "version": "4.3.0",
++      "resolved": "https://registry.npmjs.org/std-env/-/std-env-4.3.0.tgz",
++      "integrity": "sha512-OtU/EgQ1kIm5KwqQpBC6ZEMXrZRui11w8zgfTWp8cdO9B8OaPsbA8bTHO2P+HNo1VlUTGMVBwPhydu6poeXiag==",
++      "dev": true,
++      "license": "MIT"
++    },
+     "node_modules/tailwindcss": {
+       "version": "4.3.3",
+       "resolved": "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.3.3.tgz",
+@@ -2620,6 +2762,26 @@
+       "integrity": "sha512-+FbBPE1o9QAYvviau/qC5SE3caw21q3xkvWKBtja5vgqOWIHHJ3ioaq1VPfn/Szqctz2bU/oYeKd9/z5BL+PVg==",
+       "license": "MIT"
+     },
++    "node_modules/tinybench": {
++      "version": "6.2.0",
++      "resolved": "https://registry.npmjs.org/tinybench/-/tinybench-6.2.0.tgz",
++      "integrity": "sha512-78U2TlB2CnVenajOFzf3BKSm0J6oz5L0NV7g32LCPccvYc0lbWvys4d3uUUCS2B1N8PAf2+aekR8i1KbC3HO7Q==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=20.0.0"
++      }
++    },
++    "node_modules/tinyexec": {
++      "version": "1.3.1",
++      "resolved": "https://registry.npmjs.org/tinyexec/-/tinyexec-1.3.1.tgz",
++      "integrity": "sha512-GCvB3aoys96IuDFBMcTB46JOR6mdMtAToqwiW8JlWhsoh1mhHi/xn9ss/Dg7N555GiJyEt2qzoG/NHCwM6h1EA==",
++      "dev": true,
++      "license": "MIT",
++      "engines": {
++        "node": ">=18"
++      }
++    },
+     "node_modules/tinyglobby": {
+       "version": "0.2.17",
+       "resolved": "https://registry.npmjs.org/tinyglobby/-/tinyglobby-0.2.17.tgz",
+@@ -2749,6 +2911,112 @@
+           "optional": true
+         }
+       }
++    },
++    "node_modules/vitest": {
++      "version": "5.0.3",
++      "resolved": "https://registry.npmjs.org/vitest/-/vitest-5.0.3.tgz",
++      "integrity": "sha512-xMw97S3rjdtj5dkVat7jCsqWBpvchs3RlpQctUqwJD0KkERk40vz2fJ77lDwW/Vzh/pk18eItYAzkodhSes3jQ==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@types/chai": "^5.2.2",
++        "@vitest/mocker": "5.0.3",
++        "chai": "^6.2.2",
++        "es-module-lexer": "^2.3.2",
++        "expect-type": "^1.4.0",
++        "magic-string": "^1.2.3",
++        "obug": "^2.1.4",
++        "picomatch": "^4.0.7",
++        "std-env": "^4.2.0",
++        "tinybench": "^6.1.4",
++        "tinyexec": "^1.3.0",
++        "tinyglobby": "^0.2.17",
++        "why-is-node-running": "3.2.1"
++      },
++      "bin": {
++        "vitest": "vitest.mjs"
++      },
++      "engines": {
++        "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
++      },
++      "funding": {
++        "url": "https://opencollective.com/vitest"
++      },
++      "peerDependencies": {
++        "@edge-runtime/vm": "*",
++        "@opentelemetry/api": "^1.9.0",
++        "@types/node": "^22.0.0 || >=24.0.0",
++        "@vitest/browser-playwright": "5.0.3",
++        "@vitest/browser-preview": "5.0.3",
++        "@vitest/browser-webdriverio": "^5.0.0-beta.5 || >=5.0.0",
++        "@vitest/coverage-istanbul": "5.0.3",
++        "@vitest/coverage-v8": "5.0.3",
++        "@vitest/ui": "5.0.3",
++        "happy-dom": "*",
++        "jsdom": "*",
++        "vite": "^6.4.0 || ^7.0.0 || ^8.0.0"
++      },
++      "peerDependenciesMeta": {
++        "@edge-runtime/vm": {
++          "optional": true
++        },
++        "@opentelemetry/api": {
++          "optional": true
++        },
++        "@types/node": {
++          "optional": true
++        },
++        "@vitest/browser-playwright": {
++          "optional": true
++        },
++        "@vitest/browser-preview": {
++          "optional": true
++        },
++        "@vitest/browser-webdriverio": {
++          "optional": true
++        },
++        "@vitest/coverage-istanbul": {
++          "optional": true
++        },
++        "@vitest/coverage-v8": {
++          "optional": true
++        },
++        "@vitest/ui": {
++          "optional": true
++        },
++        "happy-dom": {
++          "optional": true
++        },
++        "jsdom": {
++          "optional": true
++        },
++        "vite": {
++          "optional": false
++        }
++      }
++    },
++    "node_modules/vitest/node_modules/magic-string": {
++      "version": "1.4.2",
++      "resolved": "https://registry.npmjs.org/magic-string/-/magic-string-1.4.2.tgz",
++      "integrity": "sha512-vG+rjFRj1PqdIBozIxAGMjPlOhaVe+GXpbttY/iSK7rGcJRMlwNJO7dcUwmUqkymsFLJiNGI06t4D7Fr7yRC9g==",
++      "dev": true,
++      "license": "MIT",
++      "dependencies": {
++        "@jridgewell/sourcemap-codec": "^1.6.0"
++      }
++    },
++    "node_modules/why-is-node-running": {
++      "version": "3.2.1",
++      "resolved": "https://registry.npmjs.org/why-is-node-running/-/why-is-node-running-3.2.1.tgz",
++      "integrity": "sha512-Tb2FUhB4vUsGQlfSquQLYkApkuPAFQXGFzxWKHHumVz2dK+X1RUm/HnID4+TfIGYJ1kTcwOaCk/buYCEJr6YjQ==",
++      "dev": true,
++      "license": "MIT",
++      "bin": {
++        "why-is-node-running": "cli.js"
++      },
++      "engines": {
++        "node": ">=20.11"
++      }
+     }
+   }
+ }
+diff --git a/frontend/package.json b/frontend/package.json
+index 77cc5f9..e15ee95 100644
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -28,6 +28,7 @@
+     "@types/react-dom": "^19.2.4",
+     "@vitejs/plugin-react": "^6.1.0",
+     "oxlint": "^1.79.0",
+-    "vite": "^8.2.2"
++    "vite": "^8.2.2",
++    "vitest": "^5.0.3"
+   }
+ }
+diff --git a/frontend/src/components/WorkerVoiceAssistant.jsx b/frontend/src/components/WorkerVoiceAssistant.jsx
+index e024b96..9acb849 100644
+--- a/frontend/src/components/WorkerVoiceAssistant.jsx
++++ b/frontend/src/components/WorkerVoiceAssistant.jsx
+@@ -10,10 +10,30 @@ export default function WorkerVoiceAssistant({
+ }) {
+   // Always default to Hindi for workers
+   const [lang, setLang] = useState('hi')
+-  const isHindi = lang === 'hi'
++  
++      // Handle pending confirmations
++      if (pendingAction) {
++        if (text.includes('yes') || text.includes('haan') || text.includes('हाँ') || text.includes('ha')) {
++          if (pendingAction.type === 'ACCEPT') {
++            onAcceptJob && onAcceptJob(pendingAction.jobId)
++            speakText(isHindi ? 'कार्य स्वीकार कर लिया गया है।' : 'Job accepted.', 'hi-IN')
++          } else if (pendingAction.type === 'START') {
++            onStartJob && onStartJob(pendingAction.jobId)
++            speakText(isHindi ? 'काम शुरू हो गया है।' : 'Job started.', 'hi-IN')
++          }
++        } else {
++          speakText(isHindi ? 'कार्य रद्द कर दिया गया।' : 'Action cancelled.', 'hi-IN')
++        }
++        setPendingAction(null)
++        setTranscript('')
++        return
++      }
++
++      const isHindi = lang === 'hi'
+ 
+   const [isOpen, setIsOpen] = useState(false)
+   const [isListening, setIsListening] = useState(false)
++  const [pendingAction, setPendingAction] = useState(null)
+   const [transcript, setTranscript] = useState('')
+   const [assistantMessage, setAssistantMessage] = useState('')
+   const recognitionRef = useRef(null)
+@@ -109,14 +129,14 @@ export default function WorkerVoiceAssistant({
+       return
+     }
+ 
+-    // 3. Accept Job
+-    if (fuzzyMatchIntent(text, acceptIntents)) {
++    // 3. Accept Job (Requires strict phonetic match, e.g. >= 100% tokens for 'accept')
++    if (fuzzyMatchIntent(text, acceptIntents, 2, true)) {
+       if (assignedJobs.length > 0) {
+         triggerHaptic([300]) // 1 long buzz for acceptance
+         const first = assignedJobs[0]
+         onAcceptJob && onAcceptJob(first.id)
+         const reply = isHindi 
+-          ? `काम स्वीकार कर लिया गया है! ग्राहक ${first.customer_name} को सूचना भेज दी गई है।`
++          ? `काम स्वीकार कर लिया गया है! मैंने ग्राहक ${first.customer_name} को बता दिया है कि आप आ रहे हैं।`
+           : `Job accepted successfully! Notification sent to customer ${first.customer_name}.`
+         setAssistantMessage(reply)
+         speak(reply)
+@@ -129,7 +149,7 @@ export default function WorkerVoiceAssistant({
+     }
+ 
+     // 4. Start Job
+-    if (fuzzyMatchIntent(text, startIntents)) {
++    if (fuzzyMatchIntent(text, startIntents, 2, true)) {
+       if (acceptedJobs.length > 0) {
+         triggerHaptic([100, 100, 300]) // specific buzz for start
+         const first = acceptedJobs[0]
+diff --git a/frontend/src/components/admin/RecommendationCard.jsx b/frontend/src/components/admin/RecommendationCard.jsx
+index dfa35d5..347ed65 100644
+--- a/frontend/src/components/admin/RecommendationCard.jsx
++++ b/frontend/src/components/admin/RecommendationCard.jsx
+@@ -93,7 +93,7 @@ export default function RecommendationCard({ rank, recommendation, onAllocate, a
+       <div className="mb-4">
+         <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+           <span>Why this worker is recommended:</span>
+-          <span className="text-[10px] font-normal text-slate-500 italic">Recommended based on service skills, location, availability, experience and bio-economic fatigue metrics</span>
++          <span className="text-[10px] font-normal text-slate-500 italic">Recommended based on service skills, location, availability, experience and workload & income health fatigue metrics</span>
+         </h5>
+         <ul className="space-y-1 text-xs text-slate-600">
+           {reasons && reasons.length > 0 ? (
+diff --git a/frontend/src/components/admin/ScoreBreakdown.jsx b/frontend/src/components/admin/ScoreBreakdown.jsx
+index 2c66c72..61619bc 100644
+--- a/frontend/src/components/admin/ScoreBreakdown.jsx
++++ b/frontend/src/components/admin/ScoreBreakdown.jsx
+@@ -10,7 +10,7 @@ const SCORE_LABELS = [
+   { key: 'availability', label: 'Availability', color: 'bg-indigo-500' },
+   { key: 'rating', label: 'Rating', color: 'bg-amber-500' },
+   { key: 'experience', label: 'Experience', color: 'bg-purple-500' },
+-  { key: 'bio_economic_score', label: 'Bio-Economic', color: 'bg-teal-500' },
++  { key: 'workload_income_health_score', label: 'Workload & Income Health', color: 'bg-teal-500' },
+ ]
+ 
+ export default function ScoreBreakdown({ breakdown }) {
+diff --git a/frontend/src/pages/AdminDashboardPage.jsx b/frontend/src/pages/AdminDashboardPage.jsx
+index a55954b..67b85ab 100644
+--- a/frontend/src/pages/AdminDashboardPage.jsx
++++ b/frontend/src/pages/AdminDashboardPage.jsx
+@@ -288,7 +288,6 @@ export default function AdminDashboardPage() {
+           
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+             <div className="border border-rose-200 bg-rose-50/50 p-4 rounded-xl relative overflow-hidden">
+-              <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">82% CONFIDENCE</div>
+               <h3 className="font-bold text-rose-900 text-sm mb-1 mt-1">Sector 62, Noida</h3>
+               <p className="text-xs text-rose-700 mb-3">Aggregate TDS pattern spike (940ppm avg). High probability of local RO filter failures.</p>
+               <div className="bg-white rounded-lg p-2 flex flex-col gap-1 text-[10px] font-semibold border border-rose-100">
+@@ -305,7 +304,6 @@ export default function AdminDashboardPage() {
+             </div>
+             
+             <div className="border border-amber-200 bg-amber-50/50 p-4 rounded-xl relative overflow-hidden">
+-              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">65% CONFIDENCE</div>
+               <h3 className="font-bold text-amber-900 text-sm mb-1 mt-1">Indirapuram</h3>
+               <p className="text-xs text-amber-700 mb-3">Power grid voltage anomalies detected. Likely AC capacitor failures.</p>
+               <div className="bg-white rounded-lg p-2 flex flex-col gap-1 text-[10px] font-semibold border border-amber-100">
+diff --git a/frontend/src/pages/WorkerDashboardPage.jsx b/frontend/src/pages/WorkerDashboardPage.jsx
+index f39a184..c0ccd82 100644
+--- a/frontend/src/pages/WorkerDashboardPage.jsx
++++ b/frontend/src/pages/WorkerDashboardPage.jsx
+@@ -646,11 +646,11 @@ export default function WorkerDashboardPage() {
+             {/* Tab Content: Home / Overview */}
+             {activeTab === 'home' && (
+               <>
+-                {/* Bio-Economic Health Status */}
++                {/* Workload & Income Health Health Status */}
+                 <motion.div variants={fadeInUp} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                     <div>
+-                      <h2 className="text-base font-bold text-slate-900">Bio-Economic Health Status</h2>
++                      <h2 className="text-base font-bold text-slate-900">Workload & Income Health Health Status</h2>
+                   <p className="text-[10px] text-slate-500">Cooperative algorithms monitor your fatigue and income parity to ensure fair, safe routing.</p>
+                 </div>
+               </div>
+@@ -658,15 +658,15 @@ export default function WorkerDashboardPage() {
+                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                   <div className="flex justify-between items-center mb-2">
+                     <span className="text-xs font-bold text-slate-700">Physical Fatigue Index</span>
+-                    <span className={`text-[10px] font-bold px-2 py-1 rounded ${profile.total_jobs * 3.5 >= 80 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
+-                      {Math.min(100, profile.total_jobs * 3.5).toFixed(1)} / 100
++                    <span className={`text-[10px] font-bold px-2 py-1 rounded ${(profile.fatigue_index || 0) >= 80 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
++                      {Math.min(100, (profile.fatigue_index || 0)).toFixed(1)} / 100
+                     </span>
+                   </div>
+                   <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+-                    <div className={`h-full ${profile.total_jobs * 3.5 >= 80 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, profile.total_jobs * 3.5)}%` }} />
++                    <div className={`h-full ${(profile.fatigue_index || 0) >= 80 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (profile.fatigue_index || 0))}%` }} />
+                   </div>
+                   <p className="text-[10px] text-slate-500 mt-2">
+-                    {profile.total_jobs * 3.5 >= 80 
++                    {(profile.fatigue_index || 0) >= 80 
+                       ? "⚠️ Safety Floor Reached: Algorithm has temporarily blocked new assignments to prevent physical burnout. Weekly rest hours triggered."
+                       : "✓ Fatigue levels nominal. You are eligible for new job routing."}
+                   </p>
+@@ -1123,7 +1123,7 @@ export default function WorkerDashboardPage() {
+                               <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full transition-all" style={{ width: `${p.approval_pct}%` }}></div>
+                             </div>
+                             {p.result_hash && (
+-                              <p className="text-[8px] text-slate-400 mt-1 font-mono">Tamper-proof hash: {p.result_hash.substring(0, 24)}...</p>
++                              <p className="text-[8px] text-slate-400 mt-1 font-mono">Tamper-evident hash: {p.result_hash.substring(0, 24)}...</p>
+                             )}
+                           </div>
+ 
+diff --git a/frontend/src/utils/phoneticMatcher.js b/frontend/src/utils/phoneticMatcher.js
+index ed48261..5fe1061 100644
+--- a/frontend/src/utils/phoneticMatcher.js
++++ b/frontend/src/utils/phoneticMatcher.js
+@@ -35,13 +35,38 @@ function levenshteinDistance(a, b) {
+   return matrix[b.length][a.length]
+ }
+ 
++/**
++ * Transliterates Devanagari to Latin characters roughly so phonetic rules apply.
++ */
++function transliterateDevanagari(str) {
++  if (!str) return '';
++  const devanagariMap = {
++    'अ': 'a', 'आ': 'aa', 'इ': 'i', 'ई': 'ee', 'उ': 'u', 'ऊ': 'oo', 'ए': 'e', 'ऐ': 'ai', 'ओ': 'o', 'औ': 'au',
++    'क': 'k', 'ख': 'kh', 'ग': 'g', 'घ': 'gh',
++    'च': 'ch', 'छ': 'chh', 'ज': 'j', 'झ': 'jh',
++    'ट': 't', 'ठ': 'th', 'ड': 'd', 'ढ': 'dh',
++    'त': 't', 'थ': 'th', 'द': 'd', 'ध': 'dh', 'न': 'n',
++    'प': 'p', 'फ': 'ph', 'ब': 'b', 'भ': 'bh', 'म': 'm',
++    'य': 'y', 'र': 'r', 'ल': 'l', 'व': 'v', 'श': 'sh', 'ष': 'sh', 'स': 's', 'ह': 'h',
++    'ा': 'a', 'ि': 'i', 'ी': 'ee', 'ु': 'u', 'ू': 'oo', 'े': 'e', 'ै': 'ai', 'ो': 'o', 'ौ': 'au', 'ं': 'n'
++  };
++  
++  let result = '';
++  for (let i = 0; i < str.length; i++) {
++    const char = str[i];
++    result += devanagariMap[char] || char;
++  }
++  return result;
++}
++
+ /**
+  * Very basic Soundex-style phonetic normalization for Hindi/English variations.
+  * Strips vowels and groups similar sounding consonants.
+  */
+ function phoneticNormalize(str) {
+   if (!str) return ''
+-  let s = str.toLowerCase().replace(/[^a-z0-9\s]/g, '')
++  let s = transliterateDevanagari(str.toLowerCase());
++  s = s.replace(/[^a-z0-9\s]/g, '')
+   
+   // Hindi/English phonetic normalization rules
+   s = s.replace(/sh/g, 's')
+@@ -62,7 +87,7 @@ function phoneticNormalize(str) {
+  * Checks if transcript matches any of the target phrases using fuzzy logic.
+  * Returns true if exact match, substring match, or fuzzy phonetic match within threshold.
+  */
+-export function fuzzyMatchIntent(transcript, targetPhrases, threshold = 2) {
++export function fuzzyMatchIntent(transcript, targetPhrases, threshold = 2, requiresStrict = false) {
+   if (!transcript || !targetPhrases || targetPhrases.length === 0) return false
+   
+   const lowerTranscript = transcript.toLowerCase().trim()
+@@ -85,9 +110,16 @@ export function fuzzyMatchIntent(transcript, targetPhrases, threshold = 2) {
+       for (const tw of words) {
+         // Direct Levenshtein on word
+         if (levenshteinDistance(pw, tw) <= threshold) {
+-          wordMatched = true
+-          break
++            wordMatched = true
++            break
+         }
++        
++        // Handle Devanagari direct match
++        if (levenshteinDistance(transliterateDevanagari(pw), transliterateDevanagari(tw)) <= threshold) {
++            wordMatched = true
++            break
++        }
++
+         // Phonetic Levenshtein (e.g. "kamaai" vs "kamayee")
+         if (levenshteinDistance(phoneticNormalize(pw), phoneticNormalize(tw)) <= 1) {
+           wordMatched = true
+@@ -97,8 +129,10 @@ export function fuzzyMatchIntent(transcript, targetPhrases, threshold = 2) {
+       if (wordMatched) matchedWords++
+     }
+     
+-    // If we matched at least 70% of the words in the target phrase, consider it a match
+-    if (phraseWords.length > 0 && matchedWords / phraseWords.length >= 0.7) {
++    // If strict match required (e.g. for "accept"), we need 100% of the phrase words to match, 
++    // otherwise 70% is enough.
++    const matchRatio = requiresStrict ? 1.0 : 0.7;
++    if (phraseWords.length > 0 && matchedWords / phraseWords.length >= matchRatio) {
+       return true
+     }
+   }

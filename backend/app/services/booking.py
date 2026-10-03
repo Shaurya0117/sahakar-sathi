@@ -66,7 +66,8 @@ def build_booking_response(db: Session, booking: Booking) -> BookingResponse:
         amount=booking.amount,
         customer_rating=booking.customer_rating,
         customer_review=booking.customer_review,
-        proof_of_work_hash=booking.proof_of_work_hash,
+        before_work_hash=booking.before_work_hash,
+            after_work_hash=booking.after_work_hash,
         privacy_score=booking.privacy_score,
         payment_status=booking.payment_status or "PENDING",
         assigned_by_name=assigner.name if assigner else "Cooperative Admin",
@@ -324,7 +325,7 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
     Updates Booking & ServiceRequest to COMPLETED, and atomically increments worker.total_jobs.
     
     Patent Feature: Privacy-Preserving Proof of Work (Edge AI).
-    When proof_of_work_hash is provided, the system validates the hash,
+    When after_work_hash is provided, the system validates the hash,
     checks uniqueness, and computes verification confidence — all without
     requiring the actual image to be uploaded.
     """
@@ -348,16 +349,16 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
     booking.status = BookingStatus.COMPLETED
     
     if payload:
-        booking.proof_of_work_hash = payload.proof_of_work_hash
+        booking.after_work_hash = payload.after_work_hash
         booking.privacy_score = payload.privacy_score
 
         # Patent Feature: Verify proof-of-work hash
-        if payload.proof_of_work_hash:
+        if payload.after_work_hash:
             from app.services.proof_verification import verify_proof_of_work
             verification = verify_proof_of_work(
                 db=db,
                 booking_id=booking.id,
-                hash_str=payload.proof_of_work_hash,
+                hash_str=payload.after_work_hash,
                 privacy_score=payload.privacy_score,
             )
             # Store verification confidence in privacy_score if not already set
@@ -375,7 +376,7 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
     # Patent Feature: Hyper-Local Predictive Logistics
     # Forecasts appliance failures and pre-positions spare parts upon job completion
     from app.services.predictive_logistics import run_predictive_logistics
-    if req and req.service_name:
+    if req:
         logistics_result = run_predictive_logistics(
             db=db, 
             user_id=req.customer_id, 

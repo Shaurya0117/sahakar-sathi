@@ -1,5 +1,6 @@
+from app.config import MAX_FATIGUE_THRESHOLD
 """
-Patent Feature: Cooperative Workload Equity Graph.
+Patent Feature: Cooperative Workload Equity Index.
 
 A Multi-Dimensional Fairness Optimization System for Cooperative Gig Platforms.
 
@@ -233,37 +234,62 @@ def calculate_fatigue_capacity(db: Session, worker: Worker) -> float:
     Fatigue Capacity Score (0–100).
 
     Models physical strain as a function of recent job count weighted by
-    job physical intensity. A plumber who has done 5 plumbing jobs has
-    more fatigue than someone who did 5 consulting calls.
-
-    Lower fatigue = HIGHER score (worker has more capacity).
-
-    Safety Floor: If fatigue exceeds threshold, returns 0 (worker blocked).
+    job physical intensity, duration, and a time-decay factor (0.8^days_ago) over 7 days.
+    
+    Formula: load = Σ (intensity × hours × 0.8^days_ago)
+    fatigue = min(100, load / safe_load × 100)
+    capacity = 100 - fatigue
     """
-    recent_bookings = _get_worker_recent_bookings(db, worker.id, limit=15)
+    from datetime import datetime, timezone
+    
+    # Fetch all bookings from the last 7 days
+    recent_bookings = _get_worker_recent_bookings(db, worker.id, limit=50)
 
     if not recent_bookings:
         return 90.0  # Fresh worker — high capacity
 
-    weighted_load = 0.0
+    load = 0.0
+    now = datetime.now(timezone.utc)
+    
     for booking in recent_bookings:
+        # Check if booking is within last 7 days
+        days_ago = 0
+        if booking.updated_at:
+            # Assumes updated_at is naive or aware, making it naive for timedelta if needed
+            booking_time = booking.updated_at
+            if booking_time.tzinfo is None:
+                # If naive, compare with naive utcnow
+                delta = datetime.utcnow() - booking_time
+            else:
+                delta = now - booking_time
+            days_ago = delta.total_seconds() / (24 * 3600)
+            
+        if days_ago > 7:
+            continue
+
         req = db.query(ServiceRequest).filter(ServiceRequest.id == booking.request_id).first()
+        hours = 1.0 # Default 1 hour
+        intensity = 0.50
+        
         if req:
             service = db.query(Service).filter(Service.id == req.service_id).first()
             if service:
                 intensity = _get_job_intensity(service.name, service.category)
-            else:
-                intensity = 0.50
-        else:
-            intensity = 0.50
+                hours = (service.duration_minutes or 60) / 60.0
 
-        if booking.status == BookingStatus.COMPLETED:
-            weighted_load += intensity
-        elif booking.status in (BookingStatus.IN_PROGRESS, BookingStatus.ACCEPTED):
-            weighted_load += intensity * 0.5  # Upcoming jobs contribute partial fatigue
+        status_multiplier = 1.0
+        if booking.status in (BookingStatus.IN_PROGRESS, BookingStatus.ACCEPTED):
+            status_multiplier = 0.5  # Upcoming jobs contribute partial fatigue
+            days_ago = 0 # Currently happening
+        elif booking.status != BookingStatus.COMPLETED:
+            continue
 
-    # Normalize: 0 load = 100 capacity, 8+ weighted load = near 0 capacity
-    fatigue_index = min(100.0, weighted_load * 12.5)
+        job_load = intensity * hours * (0.8 ** max(0, days_ago)) * status_multiplier
+        load += job_load
+
+    # Assuming a safe_load of around 15-20 (e.g. 5 days of 4 hours at 0.8 intensity = 16)
+    safe_load = 18.0
+    fatigue_index = min(100.0, (load / safe_load) * 100.0)
     capacity_score = max(0.0, 100.0 - fatigue_index)
 
     return round(capacity_score, 1)
@@ -276,12 +302,12 @@ def is_worker_fatigued(db: Session, worker: Worker) -> bool:
     Fatigued workers should be excluded from recommendations entirely.
     """
     capacity = calculate_fatigue_capacity(db, worker)
-    return capacity <= 10.0  # Below 10% capacity = safety block
+    return capacity <= (100 - MAX_FATIGUE_THRESHOLD)  # Exceeds max fatigue
 
 
 def calculate_equity_score(db: Session, worker: Worker) -> Dict:
     """
-    Master Equity Graph Computation.
+    Master Equity Index Computation.
 
     Computes all 5 equity dimensions and returns a comprehensive breakdown
     with per-dimension scores, weights, and composite equity score.
@@ -303,7 +329,7 @@ def calculate_equity_score(db: Session, worker: Worker) -> Dict:
     temporal = calculate_temporal_fairness(db, worker)
     fatigue = calculate_fatigue_capacity(db, worker)
 
-    is_fatigued = fatigue <= 10.0
+    is_fatigued = fatigue <= (100 - MAX_FATIGUE_THRESHOLD)
 
     # Weighted composite
     composite = (

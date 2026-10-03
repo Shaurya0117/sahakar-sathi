@@ -10,10 +10,30 @@ export default function WorkerVoiceAssistant({
 }) {
   // Always default to Hindi for workers
   const [lang, setLang] = useState('hi')
-  const isHindi = lang === 'hi'
+  
+      // Handle pending confirmations
+      if (pendingAction) {
+        if (text.includes('yes') || text.includes('haan') || text.includes('हाँ') || text.includes('ha')) {
+          if (pendingAction.type === 'ACCEPT') {
+            onAcceptJob && onAcceptJob(pendingAction.jobId)
+            speakText(isHindi ? 'कार्य स्वीकार कर लिया गया है।' : 'Job accepted.', 'hi-IN')
+          } else if (pendingAction.type === 'START') {
+            onStartJob && onStartJob(pendingAction.jobId)
+            speakText(isHindi ? 'काम शुरू हो गया है।' : 'Job started.', 'hi-IN')
+          }
+        } else {
+          speakText(isHindi ? 'कार्य रद्द कर दिया गया।' : 'Action cancelled.', 'hi-IN')
+        }
+        setPendingAction(null)
+        setTranscript('')
+        return
+      }
+
+      const isHindi = lang === 'hi'
 
   const [isOpen, setIsOpen] = useState(false)
   const [isListening, setIsListening] = useState(false)
+  const [pendingAction, setPendingAction] = useState(null)
   const [transcript, setTranscript] = useState('')
   const [assistantMessage, setAssistantMessage] = useState('')
   const recognitionRef = useRef(null)
@@ -109,14 +129,14 @@ export default function WorkerVoiceAssistant({
       return
     }
 
-    // 3. Accept Job
-    if (fuzzyMatchIntent(text, acceptIntents)) {
+    // 3. Accept Job (Requires strict phonetic match, e.g. >= 100% tokens for 'accept')
+    if (fuzzyMatchIntent(text, acceptIntents, 2, true)) {
       if (assignedJobs.length > 0) {
         triggerHaptic([300]) // 1 long buzz for acceptance
         const first = assignedJobs[0]
         onAcceptJob && onAcceptJob(first.id)
         const reply = isHindi 
-          ? `काम स्वीकार कर लिया गया है! ग्राहक ${first.customer_name} को सूचना भेज दी गई है।`
+          ? `काम स्वीकार कर लिया गया है! मैंने ग्राहक ${first.customer_name} को बता दिया है कि आप आ रहे हैं।`
           : `Job accepted successfully! Notification sent to customer ${first.customer_name}.`
         setAssistantMessage(reply)
         speak(reply)
@@ -129,7 +149,7 @@ export default function WorkerVoiceAssistant({
     }
 
     // 4. Start Job
-    if (fuzzyMatchIntent(text, startIntents)) {
+    if (fuzzyMatchIntent(text, startIntents, 2, true)) {
       if (acceptedJobs.length > 0) {
         triggerHaptic([100, 100, 300]) // specific buzz for start
         const first = acceptedJobs[0]

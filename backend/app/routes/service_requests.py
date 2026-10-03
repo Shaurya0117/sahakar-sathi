@@ -164,16 +164,20 @@ def list_all_requests_admin(
     requests = get_all_cooperative_requests_for_admin(db)
     return [build_service_request_response(r) for r in requests]
 
-# ── POST /api/requests/{id}/upload-photo ───────────────────────────────────────
-
 import os
 import shutil
+import uuid
 from fastapi import UploadFile, File
+from fastapi.responses import FileResponse
+from app.models.user import UserRole
+from app.models.booking import Booking
+
+PRIVATE_UPLOAD_DIR = "private_uploads"
 
 @router.post(
     "/{request_id}/upload-photo",
     response_model=ServiceRequestResponse,
-    summary="Upload a photo for a service request (CUSTOMER only)",
+    summary="Upload a photo securely with UUID (CUSTOMER only)",
 )
 def upload_request_photo(
     request_id: int,
@@ -185,15 +189,62 @@ def upload_request_photo(
     if not req:
         raise HTTPException(status_code=404, detail="Request not found.")
         
-    upload_dir = "static/uploads"
-    os.makedirs(upload_dir, exist_ok=True)
+    os.makedirs(PRIVATE_UPLOAD_DIR, exist_ok=True)
     
-    file_path = f"{upload_dir}/req_{req.id}_{file.filename}"
+    # Generate UUID filename
+    ext = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+    safe_filename = f"{uuid.uuid4().hex}.{ext}"
+    file_path = os.path.join(PRIVATE_UPLOAD_DIR, safe_filename)
+    
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
         
-    req.image_url = f"/{file_path}"
+    # Store internal path or secure url
+    req.image_url = f"/api/requests/{req.id}/photo"
+    req.internal_image_path = file_path # Ideally add column, but we can store it in image_url for now
+    req.image_url = f"/api/requests/{req.id}/photo?path={safe_filename}"
     db.commit()
     db.refresh(req)
     
     return build_service_request_response(req)
+
+from app.auth.dependencies import get_current_user
+@router.get(
+    "/{request_id}/photo",
+    summary="Serve request photo securely with auth check",
+)
+def get_request_photo(
+    request_id: int,
+    path: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    req = db.query(ServiceRequest).filter(ServiceRequest.id == request_id).first()
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found.")
+        
+    # Auth check: Customer owner, Admin, or Assigned Worker
+    is_authorized = False
+    if current_user.role == UserRole.ADMIN:
+        is_authorized = True
+    elif current_user.role == UserRole.CUSTOMER and req.customer_id == current_user.id:
+        is_authorized = True
+    elif current_user.role == UserRole.WORKER:
+        # Check if worker is assigned to this request
+        worker = current_user.worker_profile
+        if worker:
+            booking = db.query(Booking).filter(
+                Booking.request_id == request_id, 
+                Booking.worker_id == worker.id
+            ).first()
+            if booking:
+                is_authorized = True
+                
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Not authorized to view this photo.")
+        
+    file_path = os.path.join(PRIVATE_UPLOAD_DIR, path)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="Photo file not found.")
+        
+    return FileResponse(file_path)

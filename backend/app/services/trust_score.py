@@ -1,7 +1,7 @@
 """
 Patent Feature: Composite Verifiable Trust Score.
 
-A 7-factor worker reputation system with full provenance tracking.
+A 6-factor worker reputation system with full provenance tracking.
 
 Unlike simple average-rating systems used by conventional gig platforms,
 this computes a holistic trust metric across:
@@ -10,7 +10,7 @@ this computes a holistic trust metric across:
     3. Punctuality Score     (15%) — Based on completion rate
     4. Skill Breadth         (10%) — Distinct service categories completed
     5. Proof of Work Rate    (10%) — % of completed jobs with verified proof
-    6. Economic Equity       (10%) — Standing from Equity Graph
+    6. Economic Equity       (10%) — Standing from Equity Index
     7. Cooperative Tenure    (10%) — Days as an active cooperative member
 
 Novel Claim:
@@ -30,35 +30,44 @@ from app.models.service_request import ServiceRequest
 from app.models.worker import Worker
 
 # ── Trust Factor Weights (Total = 1.0) ───────────────────────────────────────
-WEIGHT_SATISFACTION     = 0.25
+WEIGHT_SATISFACTION     = 0.30
 WEIGHT_RELIABILITY      = 0.20
-WEIGHT_PUNCTUALITY      = 0.15
+WEIGHT_PUNCTUALITY      = 0.20
 WEIGHT_SKILL_BREADTH    = 0.10
 WEIGHT_PROOF_COMPLIANCE = 0.10
-WEIGHT_ECONOMIC_EQUITY  = 0.10
 WEIGHT_TENURE           = 0.10
 
 
 def _calculate_satisfaction(db: Session, worker: Worker) -> float:
     """
     Customer Satisfaction Score (0–100).
-    Based on average customer rating across all completed bookings.
-    New workers with no ratings get a neutral 60.
+    Based on a Bayesian average of customer ratings.
+    Formula: (n * avg + 5 * 3.5) / (n + 5)
     """
-    avg_rating = (
-        db.query(func.avg(Booking.customer_rating))
+    from sqlalchemy import func
+    
+    ratings_data = (
+        db.query(
+            func.count(Booking.customer_rating).label('count'),
+            func.avg(Booking.customer_rating).label('avg')
+        )
         .filter(
             Booking.worker_id == worker.id,
             Booking.customer_rating.isnot(None),
         )
-        .scalar()
+        .first()
     )
 
-    if avg_rating is None:
-        return 60.0  # Neutral entry score for new workers
+    n = ratings_data.count if ratings_data and ratings_data.count else 0
+    raw_avg = float(ratings_data.avg) if ratings_data and ratings_data.avg else 0.0
 
+    if n == 0:
+        return 70.0  # Neutral entry score for new workers (3.5/5.0 * 100)
+
+    bayesian_avg = (n * raw_avg + 5 * 3.5) / (n + 5)
+    
     # Map 1-5 rating to 0-100 score
-    return round(min(100.0, max(0.0, (float(avg_rating) / 5.0) * 100.0)), 1)
+    return round(min(100.0, max(0.0, (bayesian_avg / 5.0) * 100.0)), 1)
 
 
 def _calculate_reliability(db: Session, worker: Worker) -> float:
@@ -91,37 +100,61 @@ def _calculate_reliability(db: Session, worker: Worker) -> float:
 
 def _calculate_punctuality(db: Session, worker: Worker) -> float:
     """
-    Punctuality Score (0–100).
-    Based on completion rate: completed / (accepted + in_progress + completed).
-    Workers who consistently complete jobs score higher.
+    Punctuality Score (0-100).
+    Evaluates actual arrival time against scheduled time.
     """
-    completed = (
-        db.query(func.count(Booking.id))
+    completed_bookings = (
+        db.query(Booking)
         .filter(
             Booking.worker_id == worker.id,
             Booking.status == BookingStatus.COMPLETED,
         )
-        .scalar()
-    ) or 0
+        .all()
+    )
 
-    active_or_done = (
-        db.query(func.count(Booking.id))
-        .filter(
-            Booking.worker_id == worker.id,
-            Booking.status.in_([
-                BookingStatus.ACCEPTED,
-                BookingStatus.IN_PROGRESS,
-                BookingStatus.COMPLETED,
-            ]),
-        )
-        .scalar()
-    ) or 0
-
-    if active_or_done == 0:
+    if not completed_bookings:
         return 60.0  # Neutral
 
-    completion_rate = completed / active_or_done
-    return round(min(100.0, max(0.0, completion_rate * 100.0)), 1)
+    on_time_count = 0
+    total_evaluated = 0
+
+    for b in completed_bookings:
+        # Use arrived_at datetime
+        actual_arr = getattr(b, "arrived_at", None)
+        sched_time = getattr(b, "scheduled_time", None)
+        
+        if not actual_arr or not sched_time:
+            continue
+            
+        try:
+            # Parse times like "14:30"
+            s_h, s_m = map(int, sched_time.split(":"))
+            s_mins = s_h * 60 + s_m
+            
+            a_h, a_m = actual_arr.hour, actual_arr.minute
+            a_mins = a_h * 60 + a_m
+            
+            # If arrived within 15 minutes of scheduled time
+            if a_mins <= s_mins + 15:
+                on_time_count += 1
+            total_evaluated += 1
+        except Exception:
+            continue
+
+    if total_evaluated == 0:
+        # Fallback to completion rate if no arrival times logged
+        active_or_done = (
+            db.query(func.count(Booking.id))
+            .filter(
+                Booking.worker_id == worker.id,
+                Booking.status.in_([BookingStatus.ACCEPTED, BookingStatus.IN_PROGRESS, BookingStatus.COMPLETED]),
+            ).scalar()
+        ) or 0
+        if active_or_done == 0: return 60.0
+        return round(min(100.0, max(0.0, (len(completed_bookings) / active_or_done) * 100.0)), 1)
+        
+    punctuality_rate = on_time_count / total_evaluated
+    return round(min(100.0, max(0.0, punctuality_rate * 100.0)), 1)
 
 
 def _calculate_skill_breadth(db: Session, worker: Worker) -> float:
@@ -158,7 +191,7 @@ def _calculate_skill_breadth(db: Session, worker: Worker) -> float:
 def _calculate_proof_compliance(db: Session, worker: Worker) -> float:
     """
     Proof of Work Compliance Score (0–100).
-    % of completed jobs that include a valid proof_of_work_hash.
+    % of completed jobs that include a valid after_work_hash.
     Patent Feature: Privacy-Preserving Proof of Service.
     """
     completed = (
@@ -173,21 +206,9 @@ def _calculate_proof_compliance(db: Session, worker: Worker) -> float:
     if not completed:
         return 50.0  # Neutral for new workers
 
-    with_proof = sum(1 for b in completed if b.proof_of_work_hash)
+    with_proof = sum(1 for b in completed if getattr(b, 'before_work_hash', None) and getattr(b, 'after_work_hash', None))
     compliance_rate = with_proof / len(completed)
     return round(min(100.0, max(0.0, compliance_rate * 100.0)), 1)
-
-
-def _calculate_economic_equity(db: Session, worker: Worker) -> float:
-    """
-    Economic Equity Standing Score (0–100).
-    Pulls from the Equity Graph's income parity dimension.
-    """
-    try:
-        from app.services.matching.equity_graph import calculate_income_parity
-        return calculate_income_parity(db, worker)
-    except Exception:
-        return 50.0  # Fallback
 
 
 def _calculate_tenure(worker: Worker) -> float:
@@ -226,7 +247,7 @@ def calculate_trust_score(db: Session, worker: Worker) -> Dict:
     """
     Master Trust Score Computation.
 
-    Computes all 7 trust dimensions and returns a comprehensive breakdown.
+    Computes 6 trust dimensions and returns a comprehensive breakdown.
 
     Returns:
         dict with keys:
@@ -235,7 +256,6 @@ def calculate_trust_score(db: Session, worker: Worker) -> Dict:
             - punctuality: float (0-100)
             - skill_breadth: float (0-100)
             - proof_compliance: float (0-100)
-            - economic_equity: float (0-100)
             - tenure: float (0-100)
             - composite_trust_score: float (0-100)
             - trust_tier: str ("PLATINUM" | "GOLD" | "SILVER" | "BRONZE" | "NEW")
@@ -245,7 +265,6 @@ def calculate_trust_score(db: Session, worker: Worker) -> Dict:
     punctuality = _calculate_punctuality(db, worker)
     skill_breadth = _calculate_skill_breadth(db, worker)
     proof_compliance = _calculate_proof_compliance(db, worker)
-    economic_equity = _calculate_economic_equity(db, worker)
     tenure = _calculate_tenure(worker)
 
     composite = (
@@ -254,7 +273,6 @@ def calculate_trust_score(db: Session, worker: Worker) -> Dict:
         punctuality     * WEIGHT_PUNCTUALITY +
         skill_breadth   * WEIGHT_SKILL_BREADTH +
         proof_compliance * WEIGHT_PROOF_COMPLIANCE +
-        economic_equity * WEIGHT_ECONOMIC_EQUITY +
         tenure          * WEIGHT_TENURE
     )
     composite = round(min(100.0, max(0.0, composite)), 1)
@@ -277,7 +295,6 @@ def calculate_trust_score(db: Session, worker: Worker) -> Dict:
         "punctuality": punctuality,
         "skill_breadth": skill_breadth,
         "proof_compliance": proof_compliance,
-        "economic_equity": economic_equity,
         "tenure": tenure,
         "composite_trust_score": composite,
         "trust_tier": tier,

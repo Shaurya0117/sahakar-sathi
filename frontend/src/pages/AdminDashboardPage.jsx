@@ -288,7 +288,6 @@ export default function AdminDashboardPage() {
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="border border-rose-200 bg-rose-50/50 p-4 rounded-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">82% CONFIDENCE</div>
               <h3 className="font-bold text-rose-900 text-sm mb-1 mt-1">Sector 62, Noida</h3>
               <p className="text-xs text-rose-700 mb-3">Aggregate TDS pattern spike (940ppm avg). High probability of local RO filter failures.</p>
               <div className="bg-white rounded-lg p-2 flex flex-col gap-1 text-[10px] font-semibold border border-rose-100">
@@ -305,7 +304,6 @@ export default function AdminDashboardPage() {
             </div>
             
             <div className="border border-amber-200 bg-amber-50/50 p-4 rounded-xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 bg-amber-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">65% CONFIDENCE</div>
               <h3 className="font-bold text-amber-900 text-sm mb-1 mt-1">Indirapuram</h3>
               <p className="text-xs text-amber-700 mb-3">Power grid voltage anomalies detected. Likely AC capacitor failures.</p>
               <div className="bg-white rounded-lg p-2 flex flex-col gap-1 text-[10px] font-semibold border border-amber-100">

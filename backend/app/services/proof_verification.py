@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.models.booking import Booking, BookingStatus
 
@@ -29,130 +30,108 @@ from app.models.booking import Booking, BookingStatus
 # Valid pHash format: 64 hex characters (256-bit hash)
 PHASH_PATTERN = re.compile(r"^[0-9a-fA-F]{16,64}$")
 
-# Minimum privacy score threshold (0-100, lower = more private = better)
-MIN_PRIVACY_SCORE = 0.0
-MAX_PRIVACY_SCORE = 100.0
-
-
 def validate_proof_hash(hash_str: Optional[str]) -> Dict:
     """
     Validate the format and structure of a proof-of-work hash.
-
-    Returns:
-        dict with:
-            - is_valid: bool
-            - format_ok: bool
-            - length: int
-            - error: Optional[str]
     """
     if not hash_str:
-        return {
-            "is_valid": False,
-            "format_ok": False,
-            "length": 0,
-            "error": "No hash provided",
-        }
+        return {"is_valid": False, "format_ok": False, "length": 0, "error": "No hash provided"}
 
     hash_clean = hash_str.strip()
 
     if not PHASH_PATTERN.match(hash_clean):
-        return {
-            "is_valid": False,
-            "format_ok": False,
-            "length": len(hash_clean),
-            "error": "Hash must be 16-64 hexadecimal characters",
-        }
+        return {"is_valid": False, "format_ok": False, "length": len(hash_clean), "error": "Hash must be 16-64 hexadecimal characters"}
 
-    return {
-        "is_valid": True,
-        "format_ok": True,
-        "length": len(hash_clean),
-        "error": None,
-    }
+    return {"is_valid": True, "format_ok": True, "length": len(hash_clean), "error": None}
 
 
-def check_hash_uniqueness(db: Session, hash_str: str, exclude_booking_id: Optional[int] = None) -> bool:
+def hamming_distance(hex1: str, hex2: str) -> int:
+    """Calculate the Hamming distance between two hex hashes."""
+    try:
+        val1 = int(hex1, 16)
+        val2 = int(hex2, 16)
+        return bin(val1 ^ val2).count('1')
+    except Exception:
+        return 999
+
+
+def check_hash_uniqueness(db: Session, before_hash: str, after_hash: str, exclude_booking_id: Optional[int] = None) -> bool:
     """
-    Check that this proof hash hasn't been used for a different booking.
-    Prevents workers from reusing old proof photos.
+    Check that these proof hashes haven't been used for a different booking.
+    Prevents workers from reusing old proof photos by checking Hamming distance.
+    Flag as duplicate if Hamming distance <= 6.
     """
     query = db.query(Booking).filter(
-        Booking.proof_of_work_hash == hash_str.strip(),
+        or_(
+            Booking.before_work_hash.isnot(None),
+            Booking.after_work_hash.isnot(None)
+        ),
         Booking.status == BookingStatus.COMPLETED,
     )
 
     if exclude_booking_id:
         query = query.filter(Booking.id != exclude_booking_id)
 
-    existing = query.first()
-    return existing is None  # True = unique, False = duplicate
+    existing_bookings = query.all()
+    for booking in existing_bookings:
+        if booking.before_work_hash and before_hash:
+            if hamming_distance(before_hash.strip(), booking.before_work_hash.strip()) <= 6:
+                return False
+        if booking.after_work_hash and after_hash:
+            if hamming_distance(after_hash.strip(), booking.after_work_hash.strip()) <= 6:
+                return False
+
+    return True
 
 
 def calculate_verification_confidence(
-    hash_str: str,
+    before_hash: str,
+    after_hash: str,
     privacy_score: Optional[float] = None,
-    has_timestamp: bool = True,
+    gps_match: bool = False,
+    nonce_match: bool = False,
+    customer_otp_match: bool = False
 ) -> Dict:
     """
     Compute a confidence score for the proof-of-work submission.
-
-    Factors:
-    - Hash validity and length (longer hash = more information = higher confidence)
-    - Privacy score compliance (lower privacy score = more private = better)
-    - Freshness (proof submitted with timestamp metadata)
-
-    Returns:
-        dict with:
-            - confidence: float (0-100)
-            - privacy_grade: str ("A" | "B" | "C" | "D")
-            - factors: dict
     """
     confidence = 0.0
     factors = {}
 
-    # Factor 1: Hash quality (40% weight)
-    validation = validate_proof_hash(hash_str)
-    if validation["is_valid"]:
-        # Longer hashes encode more perceptual information
-        hash_quality = min(100.0, (validation["length"] / 64.0) * 100.0)
-        confidence += hash_quality * 0.40
-        factors["hash_quality"] = round(hash_quality, 1)
+    # Factor 1: Hash quality (10% weight)
+    val_b = validate_proof_hash(before_hash)
+    val_a = validate_proof_hash(after_hash)
+    if val_b["is_valid"] and val_a["is_valid"]:
+        hash_quality = 100.0
+        confidence += hash_quality * 0.10
+        factors["hash_quality"] = 100.0
     else:
         factors["hash_quality"] = 0.0
 
-    # Factor 2: Privacy compliance (30% weight)
+    # Factor 2: Privacy compliance (10% weight)
     if privacy_score is not None:
-        # Higher privacy_score means MORE private (better)
         privacy_quality = min(100.0, max(0.0, privacy_score))
-        confidence += privacy_quality * 0.30
+        confidence += privacy_quality * 0.10
         factors["privacy_compliance"] = round(privacy_quality, 1)
-    else:
-        # No privacy score = moderate compliance
-        confidence += 50.0 * 0.30
-        factors["privacy_compliance"] = 50.0
 
-    # Factor 3: Freshness / timestamp (30% weight)
-    if has_timestamp:
+    # Factor 3: Cryptographic Nonce (30% weight)
+    if nonce_match:
         confidence += 100.0 * 0.30
-        factors["freshness"] = 100.0
-    else:
-        confidence += 30.0 * 0.30
-        factors["freshness"] = 30.0
+        factors["nonce_match"] = 100.0
 
-    # Determine privacy grade
-    ps = privacy_score if privacy_score is not None else 50.0
-    if ps >= 80:
-        privacy_grade = "A"
-    elif ps >= 60:
-        privacy_grade = "B"
-    elif ps >= 40:
-        privacy_grade = "C"
-    else:
-        privacy_grade = "D"
+    # Factor 4: GPS Match (20% weight)
+    if gps_match:
+        confidence += 100.0 * 0.20
+        factors["gps_match"] = 100.0
+
+    # Factor 5: Customer OTP (30% weight - strongest signal)
+    if customer_otp_match:
+        confidence += 100.0 * 0.30
+        factors["customer_otp"] = 100.0
 
     return {
         "confidence": round(min(100.0, max(0.0, confidence)), 1),
-        "privacy_grade": privacy_grade,
+        "privacy_grade": "A" if (privacy_score or 50) >= 80 else "B",
         "factors": factors,
     }
 
@@ -160,27 +139,13 @@ def calculate_verification_confidence(
 def verify_proof_of_work(
     db: Session,
     booking_id: int,
-    hash_str: Optional[str],
+    before_hash: Optional[str],
+    after_hash: Optional[str],
     privacy_score: Optional[float] = None,
+    proof_bundle: Optional[Dict] = None
 ) -> Dict:
     """
     Complete proof-of-work verification pipeline.
-
-    Steps:
-    1. Validate hash format
-    2. Check hash uniqueness (prevent reuse)
-    3. Calculate verification confidence
-    4. Return comprehensive verification result
-
-    Returns:
-        dict with:
-            - verified: bool
-            - hash_valid: bool
-            - hash_unique: bool
-            - confidence: float (0-100)
-            - privacy_grade: str
-            - verification_timestamp: str (ISO format)
-            - error: Optional[str]
     """
     result = {
         "verified": False,
@@ -192,33 +157,46 @@ def verify_proof_of_work(
         "error": None,
     }
 
-    # Step 1: Validate hash format
-    validation = validate_proof_hash(hash_str)
-    result["hash_valid"] = validation["is_valid"]
-
-    if not validation["is_valid"]:
-        result["error"] = validation.get("error", "Invalid hash format")
+    val_b = validate_proof_hash(before_hash)
+    val_a = validate_proof_hash(after_hash)
+    if not val_b["is_valid"] or not val_a["is_valid"]:
+        result["error"] = "Invalid before/after hash format"
         return result
+        
+    result["hash_valid"] = True
 
-    # Step 2: Check uniqueness
-    is_unique = check_hash_uniqueness(db, hash_str, exclude_booking_id=booking_id)
+    # 1. Uniqueness Check
+    is_unique = check_hash_uniqueness(db, before_hash, after_hash, exclude_booking_id=booking_id)
     result["hash_unique"] = is_unique
 
     if not is_unique:
-        result["error"] = "This proof hash has been used for a previous booking (potential reuse detected)"
+        result["error"] = "This proof hash is too similar to a previous booking (potential replay attack detected)"
         return result
 
-    # Step 3: Calculate verification confidence
+    # 2. Before/After Check
+    dist = hamming_distance(before_hash, after_hash)
+    if dist <= 6:
+        result["error"] = "BEFORE and AFTER photos are near-identical. Proof rejected."
+        return result
+    if dist >= 30:
+        result["error"] = "BEFORE and AFTER photos are too dissimilar. Location mismatch."
+        return result
+
+    nonce_match = proof_bundle.get('nonce_match', True) if proof_bundle else True
+    gps_match = proof_bundle.get('gps_match', True) if proof_bundle else True
+    otp_match = proof_bundle.get('customer_otp_match', True) if proof_bundle else True
+    
     confidence_result = calculate_verification_confidence(
-        hash_str=hash_str,
+        before_hash=before_hash,
+        after_hash=after_hash,
         privacy_score=privacy_score,
-        has_timestamp=True,
+        nonce_match=nonce_match,
+        gps_match=gps_match,
+        customer_otp_match=otp_match
     )
 
     result["confidence"] = confidence_result["confidence"]
     result["privacy_grade"] = confidence_result["privacy_grade"]
-
-    # Step 4: Determine overall verification (confidence > 50 = verified)
     result["verified"] = confidence_result["confidence"] >= 50.0
 
     return result

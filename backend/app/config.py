@@ -38,3 +38,23 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+"""
+Global constants for platform configuration.
+"""
+
+# Worker Fatigue: Maximum allowable fatigue before assignments are blocked or excluded from matches.
+MAX_FATIGUE_THRESHOLD = 80.0
+
+# Weibull Parameters per Appliance (Characteristic Life in days, Shape factor)
+# assumed values, not from real data.
+WEIBULL_PARAMS = {
+    'Air Conditioner': {'eta': 2500, 'beta': 1.5},
+    'Ceiling Fan': {'eta': 3600, 'beta': 1.2},
+    'Plumbing System': {'eta': 4000, 'beta': 2.0},
+    'Refrigerator': {'eta': 3000, 'beta': 1.5},
+    'Washing Machine': {'eta': 2000, 'beta': 1.8},
+    'Electrical Board': {'eta': 5000, 'beta': 1.1},
+    'General Appliance': {'eta': 3000, 'beta': 1.5}
+}

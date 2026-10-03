@@ -1,9 +1,9 @@
 """
 Matching Engine Orchestrator.
 
-Combines candidate filtering, scoring, explainability, equity graph, and ranking.
+Combines candidate filtering, scoring, explainability, equity index, and ranking.
 
-Patent Feature: Integrates the Cooperative Workload Equity Graph for
+Patent Feature: Integrates the Cooperative Workload Equity Index for
 multi-dimensional fairness-aware worker matching.
 """
 from typing import List, Optional
@@ -43,7 +43,7 @@ def get_matching_recommendations(
     Generate explainable worker recommendations for service request *request_id*.
 
     Returns RequestMatchingResponse with candidate_count and ranked worker recommendations.
-    Now includes Patent Feature: Cooperative Workload Equity Graph — multi-dimensional
+    Now includes Patent Feature: Cooperative Workload Equity Index — multi-dimensional
     fairness breakdown for each candidate.
 
     Raises HTTPException 404 if request not found.
@@ -64,7 +64,7 @@ def get_matching_recommendations(
 
     recommendations: List[WorkerRecommendation] = []
 
-    # Step 2, 3, 4: Score, Equity Graph, & Explain Each Candidate
+    # Step 2, 3, 4: Score, Equity Index, & Explain Each Candidate
     for worker in candidates:
         user = db.query(User).filter(User.id == worker.user_id).first()
         worker_name = user.name if user else f"Worker #{worker.id}"
@@ -83,7 +83,7 @@ def get_matching_recommendations(
         experience_score = calculate_experience_score(worker)
         bio_metrics = calculate_bio_economic_metrics(worker)
 
-        # Patent Feature: Cooperative Workload Equity Graph
+        # Patent Feature: Cooperative Workload Equity Index
         equity_data = calculate_equity_score(db, worker)
 
         # Safety floor: exclude fatigued workers (from either legacy or equity check)
@@ -109,7 +109,7 @@ def get_matching_recommendations(
             "availability": availability_score,
             "rating": rating_score,
             "experience": experience_score,
-            "bio_economic_score": bio_metrics["bio_economic_score"],
+            "workload_income_health_score": bio_metrics["workload_income_health_score"],
             "fatigue_index": bio_metrics["fatigue_index"],
             "economic_deficit": bio_metrics["economic_deficit"],
             "equity_score": equity_data["composite_equity_score"],

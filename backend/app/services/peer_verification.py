@@ -1,7 +1,7 @@
 """
 Patent Feature: Decentralized Peer Verification Protocol.
 
-A Byzantine Fault-Tolerant verification system where existing verified
+A reputation-weighted quorum Fault-Tolerant verification system where existing verified
 cooperative members can collectively vouch for new workers.
 
 Replaces a single central point of failure (admin) with reputation-weighted
@@ -63,6 +63,17 @@ def submit_peer_vote(db: Session, voter_id: int, candidate_id: int, is_positive:
     if candidate.verification_status == VerificationStatus.VERIFIED:
         raise ValueError("Candidate is already verified.")
 
+    # Block mutual vouching
+    voter_votes = []
+    if voter.peer_votes:
+        try:
+            voter_votes = json.loads(voter.peer_votes) if isinstance(voter.peer_votes, str) else voter.peer_votes
+        except Exception:
+            pass
+    for v in voter_votes:
+        if v.get("voter_id") == candidate_id:
+            raise ValueError("Mutual vouching is prohibited.")
+
     # Parse existing votes
     votes = []
     if candidate.peer_votes:
@@ -113,8 +124,9 @@ def submit_peer_vote(db: Session, voter_id: int, candidate_id: int, is_positive:
 def calculate_consensus(candidate: Worker, votes: List[Dict] = None) -> Dict:
     """
     Calculate the current consensus score.
-    Returns verified=True if total positive weight >= threshold (e.g., 3.0)
-    and positive weight is > 75% of total weight (Byzantine tolerance).
+    Returns verified=True if total positive weight >= threshold (e.g., 3.0),
+    at least 3 distinct voters have participated,
+    and positive weight is > 75% of total weight (reputation-weighted quorum tolerance).
     """
     if votes is None:
         if candidate.peer_votes:
@@ -135,9 +147,10 @@ def calculate_consensus(candidate: Worker, votes: List[Dict] = None) -> Dict:
     score = (positive_weight / total_weight) * 100.0 if total_weight > 0 else 0.0
     
     # Thresholds for automatic verification:
-    # 1. Must have at least 3.0 total weight worth of votes
-    # 2. Score must be >= 75%
-    is_verified = total_weight >= 3.0 and score >= 75.0
+    # 1. Must have at least 3 distinct voters
+    # 2. Must have at least 3.0 total weight worth of votes
+    # 3. Score must be >= 75%
+    is_verified = len(votes) >= 3 and total_weight >= 3.0 and score >= 75.0
     
     return {
         "is_verified": is_verified,
@@ -146,3 +159,19 @@ def calculate_consensus(candidate: Worker, votes: List[Dict] = None) -> Dict:
         "total_weight": round(total_weight, 2),
         "positive_weight": round(positive_weight, 2)
     }
+
+def flag_worker_fraud(db: Session, worker_id: int):
+    """
+    Skin-in-the-game mechanism: if a verified worker is flagged for fraud,
+    their vouchers (who vouched for them) lose trust score or voting weight.
+    (To be integrated with the trust scoring system).
+    """
+    worker = db.query(Worker).filter(Worker.id == worker_id).first()
+    if worker and worker.peer_votes:
+        try:
+            votes = json.loads(worker.peer_votes) if isinstance(worker.peer_votes, str) else worker.peer_votes
+            for v in votes:
+                voucher_id = v.get("voter_id")
+                # TODO: Dispatch penalty to voucher_id's trust score
+        except Exception:
+            pass

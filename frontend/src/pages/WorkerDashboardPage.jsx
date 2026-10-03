@@ -646,11 +646,11 @@ export default function WorkerDashboardPage() {
             {/* Tab Content: Home / Overview */}
             {activeTab === 'home' && (
               <>
-                {/* Bio-Economic Health Status */}
+                {/* Workload & Income Health Health Status */}
                 <motion.div variants={fadeInUp} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
-                      <h2 className="text-base font-bold text-slate-900">Bio-Economic Health Status</h2>
+                      <h2 className="text-base font-bold text-slate-900">Workload & Income Health Health Status</h2>
                   <p className="text-[10px] text-slate-500">Cooperative algorithms monitor your fatigue and income parity to ensure fair, safe routing.</p>
                 </div>
               </div>
@@ -658,15 +658,15 @@ export default function WorkerDashboardPage() {
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-xs font-bold text-slate-700">Physical Fatigue Index</span>
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded ${profile.total_jobs * 3.5 >= 80 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                      {Math.min(100, profile.total_jobs * 3.5).toFixed(1)} / 100
+                    <span className={`text-[10px] font-bold px-2 py-1 rounded ${(profile.fatigue_index || 0) >= 80 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                      {Math.min(100, (profile.fatigue_index || 0)).toFixed(1)} / 100
                     </span>
                   </div>
                   <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                    <div className={`h-full ${profile.total_jobs * 3.5 >= 80 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, profile.total_jobs * 3.5)}%` }} />
+                    <div className={`h-full ${(profile.fatigue_index || 0) >= 80 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (profile.fatigue_index || 0))}%` }} />
                   </div>
                   <p className="text-[10px] text-slate-500 mt-2">
-                    {profile.total_jobs * 3.5 >= 80 
+                    {(profile.fatigue_index || 0) >= 80 
                       ? "⚠️ Safety Floor Reached: Algorithm has temporarily blocked new assignments to prevent physical burnout. Weekly rest hours triggered."
                       : "✓ Fatigue levels nominal. You are eligible for new job routing."}
                   </p>
@@ -1123,7 +1123,7 @@ export default function WorkerDashboardPage() {
                               <div className="bg-gradient-to-r from-emerald-400 to-emerald-600 h-full rounded-full transition-all" style={{ width: `${p.approval_pct}%` }}></div>
                             </div>
                             {p.result_hash && (
-                              <p className="text-[8px] text-slate-400 mt-1 font-mono">Tamper-proof hash: {p.result_hash.substring(0, 24)}...</p>
+                              <p className="text-[8px] text-slate-400 mt-1 font-mono">Tamper-evident hash: {p.result_hash.substring(0, 24)}...</p>
                             )}
                           </div>
 

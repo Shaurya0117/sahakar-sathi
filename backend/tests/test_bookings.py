@@ -156,7 +156,7 @@ def test_unverified_worker_cannot_be_allocated():
     u = User(name="Pending W", email="pending_w@test.com", password_hash=hash_password("Pass123"), role=UserRole.WORKER)
     db.add(u)
     db.commit()
-    w = Worker(user_id=u.id, profession="Electrician", verification_status=VerificationStatus.PENDING, availability=AvailabilityStatus.AVAILABLE)
+    w = Worker(user_id=u.id, cooperative_id=1, profession="Electrician", verification_status=VerificationStatus.PENDING, availability=AvailabilityStatus.AVAILABLE)
     db.add(w)
     db.commit()
     pw_id = w.id
@@ -181,7 +181,7 @@ def test_rejected_worker_cannot_be_allocated():
     u = User(name="Rejected W", email="rej_w@test.com", password_hash=hash_password("Pass123"), role=UserRole.WORKER)
     db.add(u)
     db.commit()
-    w = Worker(user_id=u.id, profession="Electrician", verification_status=VerificationStatus.REJECTED, availability=AvailabilityStatus.AVAILABLE)
+    w = Worker(user_id=u.id, cooperative_id=1, profession="Electrician", verification_status=VerificationStatus.REJECTED, availability=AvailabilityStatus.AVAILABLE)
     db.add(w)
     db.commit()
     rw_id = w.id
@@ -205,7 +205,7 @@ def test_unavailable_worker_cannot_be_allocated():
     u = User(name="Unavail W", email="unavail_w@test.com", password_hash=hash_password("Pass123"), role=UserRole.WORKER)
     db.add(u)
     db.commit()
-    w = Worker(user_id=u.id, profession="Electrician", verification_status=VerificationStatus.VERIFIED, availability=AvailabilityStatus.UNAVAILABLE)
+    w = Worker(user_id=u.id, cooperative_id=1, profession="Electrician", verification_status=VerificationStatus.VERIFIED, availability=AvailabilityStatus.UNAVAILABLE)
     db.add(w)
     db.commit()
     uw_id = w.id

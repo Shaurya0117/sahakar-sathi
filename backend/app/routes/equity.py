@@ -1,7 +1,7 @@
 """
 Equity Dashboard API Routes.
 
-Patent Feature: Cooperative Workload Equity Graph — admin-only endpoints
+Patent Feature: Cooperative Workload Equity Index — admin-only endpoints
 for viewing cooperative-wide fairness analytics.
 """
 from fastapi import APIRouter, Depends
@@ -16,7 +16,7 @@ from app.services.matching.equity_graph import (
     get_cooperative_equity_dashboard,
 )
 
-equity_router = APIRouter(prefix="/equity", tags=["Equity Graph"])
+equity_router = APIRouter(prefix="/equity", tags=["Equity Index"])
 
 
 @equity_router.get(
@@ -28,7 +28,7 @@ def get_equity_dashboard(
     admin_user: User = Depends(require_admin),
 ):
     """
-    Patent Feature: Cooperative Workload Equity Graph Dashboard.
+    Patent Feature: Cooperative Workload Equity Index Dashboard.
 
     Returns multi-dimensional fairness analytics across all cooperative workers:
     - Per-worker equity scores (income parity, geographic burden, skill utilization,
@@ -54,7 +54,7 @@ def get_worker_equity(
     admin_user: User = Depends(require_admin),
 ):
     """
-    Returns the full equity graph breakdown for a single worker.
+    Returns the full equity index breakdown for a single worker.
     """
     worker = db.query(Worker).filter(Worker.id == worker_id).first()
     if not worker:

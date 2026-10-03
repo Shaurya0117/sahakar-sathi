@@ -19,6 +19,9 @@ class ReviewCreateRequest(BaseModel):
     review: Optional[str] = Field(None, max_length=1000, description="Optional written review")
 
 
+class StartBookingRequest(BaseModel):
+    before_work_hash: Optional[str] = Field(None)
+
 class CompleteBookingRequest(BaseModel):
     """Payload sent by Worker to complete a job, optionally providing Edge AI Proof of Work."""
     proof_of_work_hash: Optional[str] = Field(None, description="Edge AI generated sensor fusion hash")

@@ -1,7 +1,7 @@
 """
 Pydantic schemas for Explainable AI Worker Matching.
 
-Includes Patent Feature: Cooperative Workload Equity Graph — multi-dimensional
+Includes Patent Feature: Cooperative Workload Equity Index — multi-dimensional
 fairness scoring across income parity, geographic burden, skill utilization,
 temporal equity, and fatigue capacity.
 """
@@ -22,7 +22,7 @@ class EquityDimensionContributions(BaseModel):
 
 class EquityBreakdown(BaseModel):
     """
-    Patent Feature: Cooperative Workload Equity Graph.
+    Patent Feature: Cooperative Workload Equity Index.
 
     Multi-dimensional fairness breakdown for a worker candidate,
     computed in real-time during matching.
@@ -46,10 +46,10 @@ class ScoreBreakdown(BaseModel):
     availability: float
     rating: float
     experience: float
-    bio_economic_score: float
+    workload_income_health_score: float
     fatigue_index: float
     economic_deficit: float
-    # Patent Feature: Equity Graph dimensions
+    # Patent Feature: Equity Index dimensions
     equity: Optional[EquityBreakdown] = None
 
 

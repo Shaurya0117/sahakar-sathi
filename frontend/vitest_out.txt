@@ -1,0 +1,14 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.3 [39m[90mC:/Users/shaur/Downloads/SIH26-main/SIH26-main/frontend[39m
+
+[90mstdout[2m | src/utils/phoneticMatcher.test.js[2m > [22m[2mPhonetic Matcher Accuracy Test[2m > [22m[2mshould evaluate 20 commands and report accuracy
+[22m[39mEXACT MATCH ACCURACY: 95%
+PHONETIC MATCH ACCURACY: 95%
+
+ [32mΓ£ô[39m src/utils/phoneticMatcher.test.js [2m([22m[2m1 test[22m[2m)[22m[32m 10[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[32m1 passed[39m[22m[90m (1)[39m
+[2m   Start at [22m 18:34:15
+[2m   Duration [22m 1.40s[2m (worker 40%, transform 39%, import 17%, tests 4%)[22m
+

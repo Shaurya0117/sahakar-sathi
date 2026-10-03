@@ -2,7 +2,7 @@
 Explanation Generator for Worker Matching Recommendations.
 
 Translates component score breakdown into transparent, human-readable bullet points.
-Includes Patent Feature: Cooperative Workload Equity Graph explanations.
+Includes Patent Feature: Cooperative Workload Equity Index explanations.
 """
 from typing import List
 
@@ -56,22 +56,22 @@ def generate_match_explanation(
     elif exp_years >= 2:
         reasons.append(f"Good experience level ({exp_years} years)")
 
-    # 6. Bio-Economic Fatigue Routing reason
-    bio_score = breakdown.get("bio_economic_score", 0)
+    # 6. Workload & Income Health Fatigue Routing reason
+    bio_score = breakdown.get("workload_income_health_score", 0)
     fatigue = breakdown.get("fatigue_index", 0)
     deficit = breakdown.get("economic_deficit", 0)
     
     if bio_score >= 80:
-        reasons.append(f"Highly optimized bio-economic match (Income deficit: {deficit}%, Fatigue: {fatigue}%)")
+        reasons.append(f"Highly optimized workload & income health match (Income deficit: {deficit}%, Fatigue: {fatigue}%)")
     elif bio_score >= 50:
-        reasons.append(f"Fair bio-economic routing priority (Fatigue Index: {fatigue}%)")
+        reasons.append(f"Fair workload & income health routing priority (Fatigue Index: {fatigue}%)")
 
     return reasons
 
 
 def generate_equity_explanation(equity_data: dict) -> List[str]:
     """
-    Patent Feature: Generate human-readable explanations for Equity Graph dimensions.
+    Patent Feature: Generate human-readable explanations for Equity Index dimensions.
 
     Provides cooperative admins with transparent insight into WHY a worker
     is being given equity-based priority.

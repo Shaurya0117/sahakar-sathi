@@ -1,3 +1,4 @@
+from app.config import MAX_FATIGUE_THRESHOLD
 """
 Scoring Engine for Worker Matching.
 
@@ -135,40 +136,38 @@ def calculate_experience_score(worker: Worker) -> float:
 
 def calculate_bio_economic_metrics(worker: Worker) -> dict:
     """
-    Novel Patent Feature: Bio-Economic Fatigue Routing Algorithm
-    Calculates physical strain and income parity.
-    Includes a safety floor: if fatigue is too high, the worker is blocked.
+    Workload & Income Health Fatigue Routing Algorithm
+    Merged into the Equity Index (Patent 3 & 4 combined).
     """
-    jobs = worker.total_jobs or 0
-    
-    # Fatigue Index: scales non-linearly with jobs (mocking physiological strain over a period)
-    # Higher index = more exhausted
-    fatigue_index = min(100.0, jobs * 3.5)
-    
-    # Safety Floor Hard Cap (8/10 or 80.0)
-    is_fatigued = fatigue_index >= 80.0
-    
-    # Economic Deficit: How far is the worker from the cooperative's target weekly parity income?
-    target_income = 5000 
-    actual_income = jobs * 500
-    economic_deficit = max(0.0, min(100.0, ((target_income - actual_income) / target_income) * 100))
-    
-    # Bio-Economic Score: High deficit boosts score, High fatigue reduces score
-    bio_economic_score = max(10.0, 100.0 - fatigue_index + economic_deficit) if not is_fatigued else 0.0
-    
-    return {
-        "fatigue_index": round(fatigue_index, 1),
-        "economic_deficit": round(economic_deficit, 1),
-        "bio_economic_score": min(100.0, round(bio_economic_score, 1)),
-        "is_fatigued": is_fatigued
-    }
+    from app.services.matching.equity_graph import calculate_fatigue_capacity, calculate_income_parity
+    from app.database import SessionLocal # or pass session
+    db = SessionLocal()
+    try:
+        fatigue_capacity = calculate_fatigue_capacity(db, worker)
+        fatigue_index = 100.0 - fatigue_capacity
+        is_fatigued = fatigue_index >= 90.0 # capacity <= 10.0
+        
+        # We reuse the income parity score from equity index
+        income_parity = calculate_income_parity(db, worker)
+        economic_deficit = income_parity # Parity score is higher if deficit is higher
+        
+        workload_income_health_score = max(10.0, 100.0 - fatigue_index + economic_deficit) if not is_fatigued else 0.0
+        
+        return {
+            "fatigue_index": round(fatigue_index, 1),
+            "economic_deficit": round(economic_deficit, 1),
+            "workload_income_health_score": min(100.0, round(workload_income_health_score, 1)),
+            "is_fatigued": is_fatigued
+        }
+    finally:
+        db.close()
 
 
 def calculate_total_score(breakdown: dict) -> float:
-    # Patent Feature: Use Equity Graph composite score if available, fallback to legacy bio_economic_score
+    # Patent Feature: Use Equity Index composite score if available, fallback to legacy workload_income_health_score
     fairness_score = breakdown.get("equity_score") 
     if fairness_score is None:
-        fairness_score = breakdown.get("bio_economic_score", 0.0)
+        fairness_score = breakdown.get("workload_income_health_score", 0.0)
 
     total = (
         breakdown.get("skill_match", 0)       * WEIGHT_SKILL +

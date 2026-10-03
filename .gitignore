@@ -71,3 +71,5 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+.rocketride/
+backend/cooperative.db
