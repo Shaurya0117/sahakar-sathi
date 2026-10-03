@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { fuzzyMatchIntent } from '../utils/phoneticMatcher'
+import { parseConfirmation } from '../utils/parseConfirmation'
 
 export default function WorkerVoiceAssistant({ 
   workerName = 'विशाल यादव',
@@ -10,26 +11,7 @@ export default function WorkerVoiceAssistant({
 }) {
   // Always default to Hindi for workers
   const [lang, setLang] = useState('hi')
-  
-      // Handle pending confirmations
-      if (pendingAction) {
-        if (text.includes('yes') || text.includes('haan') || text.includes('हाँ') || text.includes('ha')) {
-          if (pendingAction.type === 'ACCEPT') {
-            onAcceptJob && onAcceptJob(pendingAction.jobId)
-            speakText(isHindi ? 'कार्य स्वीकार कर लिया गया है।' : 'Job accepted.', 'hi-IN')
-          } else if (pendingAction.type === 'START') {
-            onStartJob && onStartJob(pendingAction.jobId)
-            speakText(isHindi ? 'काम शुरू हो गया है।' : 'Job started.', 'hi-IN')
-          }
-        } else {
-          speakText(isHindi ? 'कार्य रद्द कर दिया गया।' : 'Action cancelled.', 'hi-IN')
-        }
-        setPendingAction(null)
-        setTranscript('')
-        return
-      }
-
-      const isHindi = lang === 'hi'
+  const isHindi = lang === 'hi'
 
   const [isOpen, setIsOpen] = useState(false)
   const [isListening, setIsListening] = useState(false)
@@ -84,6 +66,39 @@ export default function WorkerVoiceAssistant({
   // Handle Voice Commands (Patent Feature: Fuzzy Phonetic Intent Matching)
   const processCommand = (cmdText) => {
     const text = cmdText.toLowerCase().trim()
+    
+    // Handle pending confirmations
+    if (pendingAction) {
+      const parsed = parseConfirmation(text)
+      
+      if (parsed === 'yes') {
+        if (pendingAction.type === 'ACCEPT') {
+          onAcceptJob && onAcceptJob(pendingAction.jobId)
+          const msg = isHindi ? 'कार्य स्वीकार कर लिया गया है।' : 'Job accepted.'
+          speak(msg)
+          setAssistantMessage(msg)
+        } else if (pendingAction.type === 'START') {
+          onStartJob && onStartJob(pendingAction.jobId)
+          const msg = isHindi ? 'काम शुरू हो गया है।' : 'Job started.'
+          speak(msg)
+          setAssistantMessage(msg)
+        }
+        setPendingAction(null)
+      } else if (parsed === 'no') {
+        const msg = isHindi ? 'कार्य रद्द कर दिया गया।' : 'Action cancelled.'
+        speak(msg)
+        setAssistantMessage(msg)
+        setPendingAction(null)
+      } else {
+        // unclear
+        const msg = isHindi ? 'क्षमा करें, मुझे समझ नहीं आया। कृपया हाँ या ना कहें।' : 'Sorry, I didn\'t catch that. Please say yes or no.'
+        speak(msg)
+        setAssistantMessage(msg)
+      }
+      setTranscript('')
+      return
+    }
+
     setTranscript(text)
 
     // Define fuzzy intent targets for different actions

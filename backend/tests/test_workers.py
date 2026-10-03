@@ -74,8 +74,21 @@ SAMPLE_PROFILE = {
     "location": "Sector 62, Noida",
     "availability": "AVAILABLE",
     "availability_description": "Mon-Sat 9AM-6PM",
+    "cooperative_id": 1,
 }
 
+import pytest
+@pytest.fixture(autouse=True)
+def setup_cooperative(db):
+    from app.models.cooperative import Cooperative
+    from app.models.user import User, UserRole
+    admin = User(name="Test Admin", email="admin_test@test.com", password_hash="hash", role=UserRole.ADMIN)
+    db.add(admin)
+    db.commit()
+    db.refresh(admin)
+    coop = Cooperative(name="Test Coop", location="Sector 62", admin_id=admin.id)
+    db.add(coop)
+    db.commit()
 
 def create_profile(token, payload=None):
     if payload is None:
@@ -312,6 +325,7 @@ def test_profile_completion_calculated_correctly():
         "experience_years": 2,          # ✓ counts
         # location omitted — NOT counted
         "availability": "AVAILABLE",    # ✓ counts (default present)
+        "cooperative_id": 1,
     })
     assert res2.status_code == 201, res2.text
     # profession(1) + experience(1) + availability(1) = 3/5 = 60%

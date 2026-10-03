@@ -81,7 +81,7 @@ def get_matching_recommendations(
         availability_score = calculate_availability_score(worker)
         rating_score = calculate_rating_score(worker)
         experience_score = calculate_experience_score(worker)
-        bio_metrics = calculate_bio_economic_metrics(worker)
+        bio_metrics = calculate_bio_economic_metrics(worker, db)
 
         # Patent Feature: Cooperative Workload Equity Index
         equity_data = calculate_equity_score(db, worker)

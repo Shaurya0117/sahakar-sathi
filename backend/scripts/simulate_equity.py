@@ -23,7 +23,7 @@ def run_simulation(strategy="equity", num_jobs=200, num_workers=7):
             weights = [10, 8, 6, 2, 2, 1, 1]
             chosen = random.choices(range(num_workers), weights=weights, k=1)[0]
         else:
-            # Equity graph prioritizes workers with lower earnings to maintain parity
+            # Equity Index prioritizes workers with lower earnings to maintain parity
             # We select the one with the lowest earnings (simplified equity index)
             chosen = np.argmin(worker_earnings)
             

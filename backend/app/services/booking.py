@@ -5,6 +5,7 @@ Handles worker allocation, status transitions, conflict protection, authorizatio
 and atomic total_jobs updates for cooperative workload fairness.
 """
 from typing import List, Optional
+from datetime import datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -66,14 +67,34 @@ def build_booking_response(db: Session, booking: Booking) -> BookingResponse:
         amount=booking.amount,
         customer_rating=booking.customer_rating,
         customer_review=booking.customer_review,
-        before_work_hash=booking.before_work_hash,
-            after_work_hash=booking.after_work_hash,
+        proof_of_work_hash=booking.proof_of_work_hash,
         privacy_score=booking.privacy_score,
         payment_status=booking.payment_status or "PENDING",
         assigned_by_name=assigner.name if assigner else "Cooperative Admin",
+        arrived_at=booking.arrived_at,
         created_at=booking.created_at,
         updated_at=booking.updated_at,
     )
+
+def mark_arrived(db: Session, booking_id: int, worker_user: User) -> BookingResponse:
+    worker = db.query(Worker).filter(Worker.user_id == worker_user.id).first()
+    if not worker:
+        raise HTTPException(status_code=403, detail="Worker profile not found.")
+
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+
+    if booking.worker_id != worker.id:
+        raise HTTPException(status_code=403, detail="You can only manage your own assigned jobs.")
+
+    if booking.status != BookingStatus.ACCEPTED:
+        raise HTTPException(status_code=400, detail="Booking must be ACCEPTED to mark arrival.")
+        
+    booking.arrived_at = datetime.utcnow()
+    db.commit()
+    db.refresh(booking)
+    return build_booking_response(db, booking)
 
 
 def allocate_worker_to_request(
@@ -325,7 +346,7 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
     Updates Booking & ServiceRequest to COMPLETED, and atomically increments worker.total_jobs.
     
     Patent Feature: Privacy-Preserving Proof of Work (Edge AI).
-    When after_work_hash is provided, the system validates the hash,
+    When proof_of_work_hash is provided, the system validates the hash,
     checks uniqueness, and computes verification confidence — all without
     requiring the actual image to be uploaded.
     """
@@ -349,18 +370,24 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
     booking.status = BookingStatus.COMPLETED
     
     if payload:
-        booking.after_work_hash = payload.after_work_hash
+        booking.proof_of_work_hash = payload.proof_of_work_hash
         booking.privacy_score = payload.privacy_score
 
         # Patent Feature: Verify proof-of-work hash
-        if payload.after_work_hash:
+        if payload.proof_of_work_hash is not None:
             from app.services.proof_verification import verify_proof_of_work
             verification = verify_proof_of_work(
                 db=db,
                 booking_id=booking.id,
-                hash_str=payload.after_work_hash,
+                hash_str=payload.proof_of_work_hash,
                 privacy_score=payload.privacy_score,
             )
+            if verification.get("error"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=verification["error"]
+                )
+                
             # Store verification confidence in privacy_score if not already set
             if payload.privacy_score is None:
                 booking.privacy_score = verification.get("confidence", 0.0)
@@ -376,11 +403,12 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
     # Patent Feature: Hyper-Local Predictive Logistics
     # Forecasts appliance failures and pre-positions spare parts upon job completion
     from app.services.predictive_logistics import run_predictive_logistics
-    if req:
+    service = db.query(Service).filter(Service.id == req.service_id).first() if req else None
+    if req and service and service.name:
         logistics_result = run_predictive_logistics(
             db=db, 
             user_id=req.customer_id, 
-            service_name=req.service_name, 
+            service_name=service.name, 
             location=req.location
         )
         # Store predictive data in booking notes so the UI can display it

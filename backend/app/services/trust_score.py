@@ -127,8 +127,10 @@ def _calculate_punctuality(db: Session, worker: Worker) -> float:
             continue
             
         try:
-            # Parse times like "14:30"
-            s_h, s_m = map(int, sched_time.split(":"))
+            # Parse times like "14:30" or "10:00:00"
+            parts = sched_time.split(":")
+            s_h = int(parts[0])
+            s_m = int(parts[1])
             s_mins = s_h * 60 + s_m
             
             a_h, a_m = actual_arr.hour, actual_arr.minute
@@ -191,7 +193,7 @@ def _calculate_skill_breadth(db: Session, worker: Worker) -> float:
 def _calculate_proof_compliance(db: Session, worker: Worker) -> float:
     """
     Proof of Work Compliance Score (0–100).
-    % of completed jobs that include a valid after_work_hash.
+    % of completed jobs that include a valid proof_of_work_hash.
     Patent Feature: Privacy-Preserving Proof of Service.
     """
     completed = (
@@ -206,7 +208,7 @@ def _calculate_proof_compliance(db: Session, worker: Worker) -> float:
     if not completed:
         return 50.0  # Neutral for new workers
 
-    with_proof = sum(1 for b in completed if getattr(b, 'before_work_hash', None) and getattr(b, 'after_work_hash', None))
+    with_proof = sum(1 for b in completed if getattr(b, 'proof_of_work_hash', None))
     compliance_rate = with_proof / len(completed)
     return round(min(100.0, max(0.0, compliance_rate * 100.0)), 1)
 

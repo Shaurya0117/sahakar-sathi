@@ -74,8 +74,11 @@ def create_demo_worker(email, profession="Electrician", status="PENDING", availa
     db.commit()
     db.refresh(user)
 
+    from app.models.cooperative import Cooperative
+    coop = db.query(Cooperative).first()
     worker = Worker(
         user_id=user.id,
+        cooperative_id=coop.id if coop else 1,
         profession=profession,
         experience_years=5,
         location="Ghaziabad",
@@ -292,4 +295,4 @@ def test_service_seed_data_exists():
     services = res.json()
     assert len(services) >= 5
     names = [s["name"] for s in services]
-    assert "Plumbing & Sanitation" in names
+    assert "Plumbing Leak Fixes" in names

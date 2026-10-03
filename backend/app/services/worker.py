@@ -74,6 +74,7 @@ def build_worker_response(worker: Worker, db: Session = None) -> WorkerResponse:
     trust_data = None
     trust_score_val = None
     trust_tier_val = None
+    fatigue_index_val = None
     if db:
         try:
             trust_data = calculate_trust_score(db, worker)
@@ -81,6 +82,13 @@ def build_worker_response(worker: Worker, db: Session = None) -> WorkerResponse:
             trust_tier_val = trust_data.get("trust_tier")
         except Exception:
             pass  # Graceful fallback if trust calculation fails
+        
+        try:
+            from app.services.matching.equity_graph import calculate_bio_economic_metrics
+            bio_metrics = calculate_bio_economic_metrics(worker)
+            fatigue_index_val = bio_metrics.get("fatigue_index")
+        except Exception:
+            pass
 
     return WorkerResponse(
         id=worker.id,
@@ -103,6 +111,7 @@ def build_worker_response(worker: Worker, db: Session = None) -> WorkerResponse:
         trust_tier=trust_tier_val,
         trust_breakdown=trust_data,
         profile_completion=calculate_profile_completion(worker),
+        fatigue_index=fatigue_index_val,
     )
 
 
@@ -132,8 +141,12 @@ def create_worker_profile(db: Session, user_id: int, data: WorkerCreateRequest) 
     if get_worker_by_user_id(db, user_id):
         raise ValueError("Worker profile already exists for this user")
 
+    if not data.cooperative_id:
+        raise ValueError("cooperative_id is required")
+
     worker = Worker(
         user_id=user_id,
+        cooperative_id=data.cooperative_id,
         profession=data.profession,
         skills=data.skills,
         experience_years=data.experience_years,

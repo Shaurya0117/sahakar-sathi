@@ -23,6 +23,7 @@ from app.models.worker import AvailabilityStatus, VerificationStatus
 class WorkerCreateRequest(BaseModel):
     """Payload for POST /api/workers/me."""
 
+    cooperative_id: int = Field(...)
     profession: str = Field(..., min_length=2, max_length=128)
     skills: List[str] = Field(default_factory=list)
     experience_years: int = Field(..., ge=0, le=60)
@@ -108,7 +109,8 @@ class WorkerResponse(BaseModel):
     trust_breakdown: Optional[dict] = None
 
     # Computed server-side
-    profile_completion: int  # percentage 0–100
+    profile_completion: int
+    fatigue_index: Optional[float] = None
 
     model_config = {"from_attributes": True}
 

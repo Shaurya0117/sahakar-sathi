@@ -134,21 +134,22 @@ def calculate_experience_score(worker: Worker) -> float:
         return 100.0
 
 
-def calculate_bio_economic_metrics(worker: Worker) -> dict:
+def calculate_bio_economic_metrics(worker: Worker, db: Session = None) -> dict:
     """
     Workload & Income Health Fatigue Routing Algorithm
     Merged into the Equity Index (Patent 3 & 4 combined).
     """
     from app.services.matching.equity_graph import calculate_fatigue_capacity, calculate_income_parity
-    from app.database import SessionLocal # or pass session
-    db = SessionLocal()
+    from app.database import SessionLocal
+    
+    session = db or SessionLocal()
     try:
-        fatigue_capacity = calculate_fatigue_capacity(db, worker)
+        fatigue_capacity = calculate_fatigue_capacity(session, worker)
         fatigue_index = 100.0 - fatigue_capacity
         is_fatigued = fatigue_index >= 90.0 # capacity <= 10.0
         
         # We reuse the income parity score from equity index
-        income_parity = calculate_income_parity(db, worker)
+        income_parity = calculate_income_parity(session, worker)
         economic_deficit = income_parity # Parity score is higher if deficit is higher
         
         workload_income_health_score = max(10.0, 100.0 - fatigue_index + economic_deficit) if not is_fatigued else 0.0
@@ -160,14 +161,19 @@ def calculate_bio_economic_metrics(worker: Worker) -> dict:
             "is_fatigued": is_fatigued
         }
     finally:
-        db.close()
+        if not db:
+            session.close()
 
 
 def calculate_total_score(breakdown: dict) -> float:
     # Patent Feature: Use Equity Index composite score if available, fallback to legacy workload_income_health_score
     fairness_score = breakdown.get("equity_score") 
     if fairness_score is None:
-        fairness_score = breakdown.get("workload_income_health_score", 0.0)
+        wf = breakdown.get("workload_fairness", {})
+        if isinstance(wf, dict):
+            fairness_score = wf.get("workload_income_health_score", 0.0)
+        else:
+            fairness_score = wf
 
     total = (
         breakdown.get("skill_match", 0)       * WEIGHT_SKILL +

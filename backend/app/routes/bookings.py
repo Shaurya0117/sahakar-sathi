@@ -137,6 +137,20 @@ def start_job(
 ):
     return start_booking(db, id, worker_user)
 
+from app.services.booking import mark_arrived
+
+@bookings_router.patch(
+    "/bookings/{id}/arrive",
+    response_model=BookingResponse,
+    summary="Mark worker as arrived (WORKER only)",
+)
+def arrive_job(
+    id: int,
+    db: Session = Depends(get_db),
+    worker_user: User = Depends(require_worker),
+):
+    return mark_arrived(db, id, worker_user)
+
 
 @bookings_router.patch(
     "/bookings/{id}/complete",

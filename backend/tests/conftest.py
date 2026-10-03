@@ -38,7 +38,6 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(autouse=True)
 def reset_database():
-    """Drop and recreate all tables before each individual test."""
     Base.metadata.drop_all(bind=engine_test)
     Base.metadata.create_all(bind=engine_test)
     yield

@@ -7,6 +7,8 @@ from app.models.cooperative import Cooperative  # noqa: F401
 from app.models.service import Service  # noqa: F401
 from app.models.service_request import RequestStatus, ServiceRequest  # noqa: F401
 from app.models.user import User, UserRole  # noqa: F401
+from app.models.appliance import HouseholdAppliance
+from app.models.shop import LocalShop
 from app.models.worker import AvailabilityStatus, VerificationStatus, Worker  # noqa: F401
 
 __all__ = [

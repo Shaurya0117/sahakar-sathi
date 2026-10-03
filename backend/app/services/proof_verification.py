@@ -55,17 +55,14 @@ def hamming_distance(hex1: str, hex2: str) -> int:
         return 999
 
 
-def check_hash_uniqueness(db: Session, before_hash: str, after_hash: str, exclude_booking_id: Optional[int] = None) -> bool:
+def check_hash_uniqueness(db: Session, hash_str: str, exclude_booking_id: Optional[int] = None) -> bool:
     """
-    Check that these proof hashes haven't been used for a different booking.
+    Check that this proof hash hasn't been used for a different booking.
     Prevents workers from reusing old proof photos by checking Hamming distance.
     Flag as duplicate if Hamming distance <= 6.
     """
     query = db.query(Booking).filter(
-        or_(
-            Booking.before_work_hash.isnot(None),
-            Booking.after_work_hash.isnot(None)
-        ),
+        Booking.proof_of_work_hash.isnot(None),
         Booking.status == BookingStatus.COMPLETED,
     )
 
@@ -74,11 +71,8 @@ def check_hash_uniqueness(db: Session, before_hash: str, after_hash: str, exclud
 
     existing_bookings = query.all()
     for booking in existing_bookings:
-        if booking.before_work_hash and before_hash:
-            if hamming_distance(before_hash.strip(), booking.before_work_hash.strip()) <= 6:
-                return False
-        if booking.after_work_hash and after_hash:
-            if hamming_distance(after_hash.strip(), booking.after_work_hash.strip()) <= 6:
+        if booking.proof_of_work_hash and hash_str:
+            if hamming_distance(hash_str.strip(), booking.proof_of_work_hash.strip()) <= 6:
                 return False
 
     return True
@@ -139,8 +133,7 @@ def calculate_verification_confidence(
 def verify_proof_of_work(
     db: Session,
     booking_id: int,
-    before_hash: Optional[str],
-    after_hash: Optional[str],
+    hash_str: Optional[str],
     privacy_score: Optional[float] = None,
     proof_bundle: Optional[Dict] = None
 ) -> Dict:
@@ -157,38 +150,28 @@ def verify_proof_of_work(
         "error": None,
     }
 
-    val_b = validate_proof_hash(before_hash)
-    val_a = validate_proof_hash(after_hash)
-    if not val_b["is_valid"] or not val_a["is_valid"]:
-        result["error"] = "Invalid before/after hash format"
+    val = validate_proof_hash(hash_str)
+    if not val["is_valid"]:
+        result["error"] = "Invalid hash format"
         return result
         
     result["hash_valid"] = True
 
     # 1. Uniqueness Check
-    is_unique = check_hash_uniqueness(db, before_hash, after_hash, exclude_booking_id=booking_id)
+    is_unique = check_hash_uniqueness(db, hash_str, exclude_booking_id=booking_id)
     result["hash_unique"] = is_unique
 
     if not is_unique:
         result["error"] = "This proof hash is too similar to a previous booking (potential replay attack detected)"
         return result
 
-    # 2. Before/After Check
-    dist = hamming_distance(before_hash, after_hash)
-    if dist <= 6:
-        result["error"] = "BEFORE and AFTER photos are near-identical. Proof rejected."
-        return result
-    if dist >= 30:
-        result["error"] = "BEFORE and AFTER photos are too dissimilar. Location mismatch."
-        return result
-
-    nonce_match = proof_bundle.get('nonce_match', True) if proof_bundle else True
-    gps_match = proof_bundle.get('gps_match', True) if proof_bundle else True
-    otp_match = proof_bundle.get('customer_otp_match', True) if proof_bundle else True
+    nonce_match = proof_bundle.get('nonce_match', False) if proof_bundle else False
+    gps_match = proof_bundle.get('gps_match', False) if proof_bundle else False
+    otp_match = proof_bundle.get('customer_otp_match', False) if proof_bundle else False
     
     confidence_result = calculate_verification_confidence(
-        before_hash=before_hash,
-        after_hash=after_hash,
+        before_hash=hash_str,
+        after_hash=hash_str,
         privacy_score=privacy_score,
         nonce_match=nonce_match,
         gps_match=gps_match,

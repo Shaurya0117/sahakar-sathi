@@ -52,6 +52,12 @@ export const rejectJob = (bookingId) => api.patch(`/bookings/${bookingId}/reject
 export const startJob = (bookingId) => api.patch(`/bookings/${bookingId}/start`)
 
 /**
+ * Worker marks as arrived.
+ * @param {number} bookingId
+ */
+export const arriveJob = (bookingId) => api.patch(`/bookings/${bookingId}/arrive`)
+
+/**
  * Worker marks a service completed.
  * @param {number} bookingId
  */

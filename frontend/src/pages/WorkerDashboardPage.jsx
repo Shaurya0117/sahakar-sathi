@@ -21,6 +21,7 @@ import {
   getWorkerJobs,
   rejectJob,
   startJob,
+  arriveJob,
 } from '../services/bookingService'
 import {
   createWorkerProfile,
@@ -178,6 +179,18 @@ export default function WorkerDashboardPage() {
     } catch (err) {
       triggerHaptic([50, 50])
       setError(err.response?.data?.detail || 'Failed to reject job.')
+    }
+  }
+
+  const handleArriveJob = async (bookingId) => {
+    try {
+      triggerHaptic([100, 100])
+      await arriveJob(bookingId)
+      setSuccessMsg('Arrived at location!')
+      await fetchWorkerJobs()
+    } catch (err) {
+      triggerHaptic([50, 50])
+      setError(err.response?.data?.detail || 'Failed to mark arrival.')
     }
   }
 
@@ -782,7 +795,13 @@ export default function WorkerDashboardPage() {
                             </MotionButton>
                           </div>
                         )}
-                        {job.status === 'ACCEPTED' && (
+                        {job.status === 'ACCEPTED' && !job.arrived_at && (
+                          <MotionButton onClick={() => handleArriveJob(job.id)}
+                            className="w-full py-2 bg-gradient-to-r from-teal-600 to-teal-700 text-white font-bold text-xs rounded-xl shadow-sm">
+                            I've Arrived
+                          </MotionButton>
+                        )}
+                        {job.status === 'ACCEPTED' && job.arrived_at && (
                           <MotionButton onClick={() => handleStartJob(job.id)}
                             className="w-full py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold text-xs rounded-xl shadow-sm">
                             {t('start.service')}

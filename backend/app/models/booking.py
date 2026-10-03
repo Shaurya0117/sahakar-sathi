@@ -38,13 +38,13 @@ class Booking(Base):
     customer_rating = Column(Integer, nullable=True) # 1 to 5
     customer_review = Column(String(1000), nullable=True)
     payment_status = Column(String(50), default="PENDING")
+    notes = Column(String(1000), nullable=True)
     
     # Arrived at for punctuality tracking
     arrived_at = Column(DateTime, nullable=True)
     
     # Novel Patent Feature: Privacy-Preserving Proof of Work (Edge AI)
-    before_work_hash = Column(String(255), nullable=True)
-    after_work_hash = Column(String(255), nullable=True)
+    proof_of_work_hash = Column(String(255), nullable=True)
     privacy_score = Column(Float, nullable=True)
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
