@@ -302,6 +302,71 @@ def test_fatigued_worker_never_matched(db: Session):
     assert worker.id not in recommended_worker_ids
 
 
+def test_unskilled_worker_excluded_before_scoring(db: Session):
+    """
+    Workers lacking relevant trade skills or profession are excluded during
+    candidate discovery (candidate_filter.py:95) and never scored or promoted by ML.
+    """
+    from app.models.cooperative import Cooperative
+    from app.models.user import User, UserRole
+    from app.services.matching.candidate_filter import filter_eligible_candidates
+
+    admin = User(name="Admin Skill", email="admin_skill_test@test.com", password_hash="dummy", role=UserRole.ADMIN)
+    db.add(admin)
+    db.flush()
+
+    coop = Cooperative(name="Skill Coop", location="Delhi", admin_id=admin.id)
+    db.add(coop)
+    db.flush()
+
+    service = Service(name="Electrical Wiring Installation", category="Electrical", price=500.0)
+    db.add(service)
+    db.flush()
+
+    u_skilled = User(name="Electrician", email="skilled_e@test.com", password_hash="dummy", role=UserRole.WORKER)
+    u_unskilled = User(name="Plumber", email="unskilled_p@test.com", password_hash="dummy", role=UserRole.WORKER)
+    db.add_all([u_skilled, u_unskilled])
+    db.flush()
+
+    w_skilled = Worker(
+        user_id=u_skilled.id, cooperative_id=coop.id, profession="Electrician",
+        skills=["Wiring", "Switches"], verification_status=VerificationStatus.VERIFIED,
+        availability=AvailabilityStatus.AVAILABLE, location="Delhi"
+    )
+    w_unskilled = Worker(
+        user_id=u_unskilled.id, cooperative_id=coop.id, profession="Plumber",
+        skills=["Pipe Fitting"], verification_status=VerificationStatus.VERIFIED,
+        availability=AvailabilityStatus.AVAILABLE, location="Delhi"
+    )
+    db.add_all([w_skilled, w_unskilled])
+    db.flush()
+
+    cust = User(name="Cust Skill", email="cust_skill@test.com", password_hash="dummy", role=UserRole.CUSTOMER)
+    db.add(cust)
+    db.flush()
+
+    req = ServiceRequest(
+        customer_id=cust.id, service_id=service.id, cooperative_id=coop.id,
+        description="Need full house wiring", location="Delhi",
+        preferred_date="2026-08-30", preferred_time="10:00"
+    )
+    db.add(req)
+    db.flush()
+
+    # Verify candidate filtering
+    candidates = filter_eligible_candidates(db, req)
+    candidate_ids = [c.id for c in candidates]
+    assert w_skilled.id in candidate_ids
+    assert w_unskilled.id not in candidate_ids
+
+    # Verify matching recommendations
+    rec_resp = get_matching_recommendations(db, req.id)
+    rec_ids = [r.worker_id for r in rec_resp.recommendations]
+    assert w_skilled.id in rec_ids
+    assert w_unskilled.id not in rec_ids
+
+
+
 # ---------------------------------------------------------------------------
 # 6. Reproducibility of Training Artifacts
 # ---------------------------------------------------------------------------

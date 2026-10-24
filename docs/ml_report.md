@@ -88,8 +88,8 @@ The dispatch pipeline follows a strict hierarchical filtering architecture:
    Because Candidate B is within $2.0$ points of Candidate A inside the top 3, ML tie-breaking re-orders `[Candidate B, Candidate A]`. Candidate B is moved to Rank 1 and dispatched first.
 2. **Strict Safety Floor Invariance:**
    The fatigue threshold ($FatigueIndex \ge 80.0$) and peer verification checks execute *prior* to scoring and ML inference. A fatigued or unverified worker is excluded in candidate filtering; the ML module has zero mathematical pathway to inspect or promote an excluded worker.
-3. **Skill Invariance:**
-   Unskilled candidates receive zero skill points, creating a 30-point deficit (skill weight = 0.30). They can never fall within the $2.0$-point margin of a skilled candidate and cannot be promoted by ML.
+3. **Skill Invariance & Pre-Scoring Exclusion:**
+   Workers lacking the required profession or skill domain are eliminated before candidate scoring in `candidate_filter.py:95` (`is_profession_or_skill_relevant(service, w)`). While `scorer.py` assigns a baseline fallback score of 50.0 (not 0.0) to unspecialized tasks that pass filtering, workers with irrelevant trades never pass `filter_eligible_candidates` in `engine.py:63`. Consequently, they never reach the recommendation list and cannot be promoted by ML.
 4. **Locality Invariance:**
    Candidates ranked $4^{\text{th}}$ or lower ($k > 3$) and candidates whose multi-factor score differs from the top score by more than $\delta = 2.0$ points are strictly invariant under ML inference. Formally:
    $$\forall i, j \notin \text{TieGroup}, \quad \text{Rank}(i) < \text{Rank}(j) \iff \text{Score}(i) > \text{Score}(j)$$
@@ -206,7 +206,11 @@ To verify whether the ML tie-breaker respects income equity, we evaluated the mo
    - **₹4,500 – ₹6,000:** Mean Acceptance Probability = **$44.48\% \pm 37.61\%$** (5,974 samples)
    - **₹6,000 – ₹7,500:** Mean Acceptance Probability = **$37.84\% \pm 35.66\%$** (5,962 samples)
 
-*Empirical Confirmation:* The numbers demonstrate a monotonic relationship where under-earning workers have substantially higher predicted acceptance chances. When two candidates are tied within the 2.0-point rule margin, the ML tie-breaker naturally favors the lower-earning candidate.
+*Empirical Confirmation & Mechanism:*  
+The generator assumes acceptance falls as recent earnings rise, the model learned that assumption, and whether real workers behave this way is untested.
+
+*Note on Logit Slope vs. Classifier Output:*  
+In `generate_ml_data.py`, the linear log-odds coefficient is $-0.00015 \times (\text{recent\_earnings} - 2500)$. Over the entire training range ($[0, 7500]$ rupees), this contributes $-0.00015 \times 7500 = -1.125$ units to latent logit $z$ (moving theoretical probability from $\approx 71.1\%$ at ₹0 to $\approx 44.4\%$ at ₹7,500). However, the training labels were hard-thresholded at $P(\text{accept}) > 0.5$ ($z > 0$). In this controlled feature sweep, $z$ crosses the critical classification boundary $z = 0$ near ₹6,000. Because the gradient boosted trees fit a sharp step-function separator around $z = 0$ followed by Platt calibration, the predicted probability drops steeply from $95.7\%$ down to $13.4\%$.
 
 ### Permutation Feature Importance
 Permutation importance computes the drop in ROC-AUC when a feature's values are randomly shuffled on the test set:
@@ -301,6 +305,8 @@ To measure whether ML tie-breaking creates measurable operational advantages wit
 2. **Equity is Preserved (and Slightly Enhanced):** The Gini coefficient of worker income decreases from $0.2663$ to $0.2538$ ($\Delta = -0.0125$, 95% CI: $[-0.0172, -0.0078]$). Breaking ties in favor of workers who are eager and available helps equalize completed earnings.
 3. **Modest Logistics Trade-Off:** Travel distance increases by a negligible 100 meters ($2.64\text{ km} \to 2.74\text{ km}$), because the engine occasionally selects a worker 200 meters farther away if that worker has lower fatigue and higher willingness to complete the task.
 4. **Zero Skill Degradation:** The skill-match rate remains essentially perfect at $99.90\%$ vs $99.91\%$ (zero crossing within bootstrap confidence interval).
+5. **Shared Generator Assumption & Methodological Caveat:**  
+   In this simulation, worker accept/decline decisions are evaluated using the exact same underlying logistic formulation and feature weights as the synthetic training data. Consequently, the observed Gini reduction and acceptance improvements partly reflect this shared built-in assumption. In a real-world deployment where worker preferences deviate from this synthetic model, performance and equity impacts would differ.
 
 ---
 
