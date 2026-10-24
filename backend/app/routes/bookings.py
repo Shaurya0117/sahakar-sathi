@@ -3,18 +3,22 @@ FastAPI route handlers for Worker Allocation and Booking Lifecycle.
 """
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, status, Body
+from fastapi import APIRouter, Depends, status, Body, HTTPException
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user, require_admin, require_customer, require_worker
 from app.database.session import get_db
 from app.models.user import User
+from app.models.booking import Booking, BookingStatus
+from app.models.service_request import ServiceRequest
+from app.services.proof_verification import derive_completion_code
 from app.schemas.booking import AllocateWorkerRequest, BookingResponse, CompleteBookingRequest
 from app.services.booking import (
     accept_booking,
     allocate_worker_to_request,
     complete_booking,
     get_booking_by_id,
+    get_booking_started_at_iso,
     get_cooperative_bookings,
     get_customer_bookings,
     get_worker_bookings,
@@ -181,3 +185,28 @@ def review_job(
     customer_user: User = Depends(require_customer),
 ):
     return submit_booking_review(db, id, customer_user, data)
+
+
+@bookings_router.get(
+    "/bookings/{id}/completion-code",
+    summary="Get job completion code (CUSTOMER only)",
+)
+def get_job_completion_code(
+    id: int,
+    db: Session = Depends(get_db),
+    customer_user: User = Depends(require_customer),
+):
+    booking = db.query(Booking).filter(Booking.id == id).first()
+    if not booking:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Booking not found.")
+
+    req = db.query(ServiceRequest).filter(ServiceRequest.id == booking.request_id).first()
+    if not req or req.customer_id != customer_user.id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized to access completion code for this booking.")
+
+    if booking.status != BookingStatus.IN_PROGRESS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Completion code is only available when booking is in progress.")
+
+    started_at_iso = get_booking_started_at_iso(booking)
+    code = derive_completion_code(booking.id, started_at_iso)
+    return {"code": code}

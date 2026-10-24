@@ -13,6 +13,7 @@ class AllocateWorkerRequest(BaseModel):
     worker_id: int = Field(..., description="ID of the verified worker to allocate")
     amount: Optional[float] = Field(None, description="Optional agreed service amount")
 
+
 class ReviewCreateRequest(BaseModel):
     """Payload sent by Customer to review a completed booking."""
     rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
@@ -21,8 +22,14 @@ class ReviewCreateRequest(BaseModel):
 
 class CompleteBookingRequest(BaseModel):
     """Payload sent by Worker to complete a job, optionally providing Edge AI Proof of Work."""
-    proof_of_work_hash: Optional[str] = Field(None, description="Edge AI generated sensor fusion hash")
-    privacy_score: Optional[float] = Field(None, description="Privacy preservation score (0-100)")
+    proof_of_work_hash: Optional[str] = None
+    privacy_score: Optional[float] = None
+    lat: Optional[float] = None
+    lon: Optional[float] = None
+    captured_at: Optional[str] = None  # UTC ISO to second with Z
+    nonce_date: Optional[str] = None   # YYYY-MM-DD
+    customer_code: Optional[str] = None
+    tag: Optional[str] = None          # 64-char lowercase hex
 
 
 class BookingResponse(BaseModel):
@@ -48,6 +55,10 @@ class BookingResponse(BaseModel):
     customer_review: Optional[str] = None
     proof_of_work_hash: Optional[str] = None
     privacy_score: Optional[float] = None
+    proof_tag: Optional[str] = None
+    proof_lat: Optional[float] = None
+    proof_lon: Optional[float] = None
+    proof_captured_at: Optional[datetime] = None
     payment_status: str = "PENDING"
     assigned_by_name: Optional[str] = None
     arrived_at: Optional[datetime] = None

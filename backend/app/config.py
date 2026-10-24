@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     TELNYX_MESSAGING_PROFILE_ID: str = ""
     TELNYX_WEBHOOK_SECRET: str = ""
 
+    # Proof of Completion System
+    PROOF_SECRET: str = "dev-change-me-before-deploy"
+    PROOF_MAX_DISTANCE_M: float = 500.0
+    PROOF_NONCE_GRACE_DAYS: int = 2
+    PROOF_CODE_MAX_TRIES: int = 5
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

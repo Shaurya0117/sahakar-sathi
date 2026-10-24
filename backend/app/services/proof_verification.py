@@ -17,6 +17,8 @@ Novel Claim:
     transmitted as a compact hash fingerprint without raw image upload,
     enabling verification without customer privacy violation."
 """
+import hmac
+import hashlib
 import re
 from datetime import datetime, timezone
 from typing import Dict, Optional
@@ -25,10 +27,41 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from app.models.booking import Booking, BookingStatus
+from app.config import settings
 
 
 # Valid pHash format: 64 hex characters (256-bit hash)
 PHASH_PATTERN = re.compile(r"^[0-9a-fA-F]{16,64}$")
+HAMMING_THRESHOLD = 6
+
+
+def get_daily_nonce(worker_id: int, date_str: str) -> str:
+    """Hex HMAC-SHA256(key=PROOF_SECRET, msg=f'{worker_id}:{date_str}')"""
+    key = settings.PROOF_SECRET.encode('utf-8')
+    msg = f"{worker_id}:{date_str}".encode('utf-8')
+    return hmac.new(key, msg, hashlib.sha256).hexdigest()
+
+
+def derive_completion_code(booking_id: int, started_at_iso: str) -> str:
+    """6 digits from HMAC-SHA256(PROOF_SECRET, f'{booking_id}:{started_at_iso}') mod 10^6, zero-padded"""
+    key = settings.PROOF_SECRET.encode('utf-8')
+    msg = f"{booking_id}:{started_at_iso}".encode('utf-8')
+    digest = hmac.new(key, msg, hashlib.sha256).digest()
+    code_int = int.from_bytes(digest[:4], 'big') % (10 ** 6)
+    return str(code_int).zfill(6)
+
+
+def build_canonical(job_id: int, worker_id: int, photo_hash: str, lat, lon, captured_at: str, nonce_date: str, customer_code: str) -> str:
+    """Build the canonical string. lat/lon are floats or None. captured_at is UTC ISO to the second with Z."""
+    lat_s = f"{lat:.5f}" if lat is not None else "NA"
+    lon_s = f"{lon:.5f}" if lon is not None else "NA"
+    return f"v1|{job_id}|{worker_id}|{photo_hash}|{lat_s}|{lon_s}|{captured_at}|{nonce_date}|{customer_code}"
+
+
+def compute_proof_tag(nonce: str, canonical: str) -> str:
+    """HMAC-SHA256 keyed by nonce (as UTF-8 bytes), over canonical string. Returns lowercase hex."""
+    return hmac.new(nonce.encode('utf-8'), canonical.encode('utf-8'), hashlib.sha256).hexdigest()
+
 
 def validate_proof_hash(hash_str: Optional[str]) -> Dict:
     """
@@ -59,7 +92,7 @@ def check_hash_uniqueness(db: Session, hash_str: str, exclude_booking_id: Option
     """
     Check that this proof hash hasn't been used for a different booking.
     Prevents workers from reusing old proof photos by checking Hamming distance.
-    Flag as duplicate if Hamming distance <= 6.
+    Flag as duplicate if Hamming distance <= HAMMING_THRESHOLD.
     """
     query = db.query(Booking).filter(
         Booking.proof_of_work_hash.isnot(None),
@@ -72,7 +105,7 @@ def check_hash_uniqueness(db: Session, hash_str: str, exclude_booking_id: Option
     existing_bookings = query.all()
     for booking in existing_bookings:
         if booking.proof_of_work_hash and hash_str:
-            if hamming_distance(hash_str.strip(), booking.proof_of_work_hash.strip()) <= 6:
+            if hamming_distance(hash_str.strip(), booking.proof_of_work_hash.strip()) <= HAMMING_THRESHOLD:
                 return False
 
     return True

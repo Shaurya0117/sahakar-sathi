@@ -42,10 +42,16 @@ class Booking(Base):
     
     # Arrived at for punctuality tracking
     arrived_at = Column(DateTime, nullable=True)
+    started_at = Column(DateTime, nullable=True)
     
     # Novel Patent Feature: Privacy-Preserving Proof of Work (Edge AI)
     proof_of_work_hash = Column(String(255), nullable=True)
     privacy_score = Column(Float, nullable=True)
+    proof_tag = Column(String(255), nullable=True, unique=True)
+    proof_lat = Column(Float, nullable=True)
+    proof_lon = Column(Float, nullable=True)
+    proof_captured_at = Column(DateTime, nullable=True)
+    completion_code_tries = Column(Integer, default=0, nullable=False, server_default="0")
 
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

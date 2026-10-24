@@ -4,6 +4,7 @@ FastAPI application entry point.
 Run with:
     uvicorn app.main:app --reload --port 8000
 """
+import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -43,6 +44,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Startup Events ────────────────────────────────────────────────────────────
+@app.on_event("startup")
+def startup_event():
+    if settings.PROOF_SECRET == "dev-change-me-before-deploy":
+        logging.warning("WARNING: PROOF_SECRET is set to the default dev value 'dev-change-me-before-deploy'. Please change this in production.")
+    try:
+        from scripts.migrate_proof_columns import run_migration
+        run_migration()
+    except Exception as e:
+        logging.warning(f"Could not run proof migration at startup: {e}")
 
 # ── Register routers ──────────────────────────────────────────────────────────
 app.include_router(api_router)
