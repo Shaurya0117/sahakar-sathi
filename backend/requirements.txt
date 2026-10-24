@@ -10,3 +10,9 @@ python-multipart
 httpx
 pytest
 pytest-asyncio
+scikit-learn
+numpy
+pandas
+matplotlib
+joblib
+scipy
