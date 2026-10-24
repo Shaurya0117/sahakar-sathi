@@ -1,5 +1,6 @@
 {
   "trained_at": "2026-10-24T16:18:13.997147+00:00",
+  "sklearn_version": "1.9.1",
   "random_seed": 42,
   "acceptance_model": {
     "model_name": "HistGradientBoosting",

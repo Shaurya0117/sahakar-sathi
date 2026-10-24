@@ -69,11 +69,32 @@ The dispatch pipeline follows a strict hierarchical filtering architecture:
                                           - Remaining candidates maintain score ranks
 ```
 
-### Non-Interference Mathematical Proof & Safety Guarantees
-1. **Safety Floor Invariance:** The fatigue threshold ($FatigueIndex \ge 80.0$) and peer verification requirements execute *prior* to scoring and ML inference. A fatigued or unverified candidate is excluded from the candidate list entirely; the ML module has zero mathematical pathway to promote or evaluate an excluded worker.
-2. **Locality Invariance:** Candidates ranked $4^{\text{th}}$ or lower ($k > 3$) and candidates whose multi-factor score differs from the top score by more than $\delta = 2.0$ points are strictly invariant under ML inference. Formally:
+### Decision Example & Non-Interference Guarantees
+1. **Can ML Re-order the Top Candidate?**
+   **Yes, by design in close tie-break conditions.**  
+   *Code Path (`backend/app/services/matching/engine.py`):*
+   ```python
+   top_score = recommendations[0].score
+   k_limit = min(len(recommendations), 3)
+   margin = 2.0
+   tie_indices = [i for i in range(k_limit) if (top_score - recommendations[i].score) <= margin]
+   if len(tie_indices) > 1:
+       reordered = sorted(subset, key=lambda c: (c.ml_accept_probability, c.score), reverse=True)
+       recommendations[:len(reordered)] = reordered
+   ```
+   *Concrete Example:*  
+   - Candidate A (Worker 10) scores **88.0** with acceptance probability **0.42** (higher recent earnings, higher fatigue).
+   - Candidate B (Worker 14) scores **87.1** with acceptance probability **0.94** (under-earning, low fatigue).  
+   Because Candidate B is within $2.0$ points of Candidate A inside the top 3, ML tie-breaking re-orders `[Candidate B, Candidate A]`. Candidate B is moved to Rank 1 and dispatched first.
+2. **Strict Safety Floor Invariance:**
+   The fatigue threshold ($FatigueIndex \ge 80.0$) and peer verification checks execute *prior* to scoring and ML inference. A fatigued or unverified worker is excluded in candidate filtering; the ML module has zero mathematical pathway to inspect or promote an excluded worker.
+3. **Skill Invariance:**
+   Unskilled candidates receive zero skill points, creating a 30-point deficit (skill weight = 0.30). They can never fall within the $2.0$-point margin of a skilled candidate and cannot be promoted by ML.
+4. **Locality Invariance:**
+   Candidates ranked $4^{\text{th}}$ or lower ($k > 3$) and candidates whose multi-factor score differs from the top score by more than $\delta = 2.0$ points are strictly invariant under ML inference. Formally:
    $$\forall i, j \notin \text{TieGroup}, \quad \text{Rank}(i) < \text{Rank}(j) \iff \text{Score}(i) > \text{Score}(j)$$
-3. **Graceful Degradation:** If `ML_ENABLED=False`, or if any model artifact fails checksum or load validation, the tie-breaking block is skipped, yielding exact equivalence to the baseline rule-based dispatcher.
+5. **Graceful Degradation:**
+   If `ML_ENABLED=False`, or if any model artifact fails checksum or load validation, the tie-breaking block is skipped, yielding exact equivalence to the baseline rule-based dispatcher.
 
 ---
 
@@ -98,13 +119,33 @@ To train the models without harvesting proprietary user data or relying on costl
 - `hour_of_day`: Dispatch timestamp (6:00 to 22:00 hours).
 - `past_acceptance_rate`: Historical acceptance frequency (0.0 to 1.0).
 
+### How the Synthetic Acceptance Rule Was Chosen
+Before finalizing the data generation script, three iterative rule formulations were evaluated exclusively to achieve an informative target class balance:
+1. **Version 1 (Naive Linear Logit):**  
+   - *Formula:* $z = 0.0 - 0.20(\text{dist} - 4) + 0.03(\text{skill} - 80) - 0.05(\text{fatigue} - 30) + 0.6(\text{rating} - 4) + 0.004(\text{val} - 500) - 1.5(\text{intensity} - 0.65) + \epsilon$.
+   - *Change & Why:* Initial draft modeling additive utility with zero intercept.
+   - *Class Balance:* **34.2% accepted / 65.8% rejected**. Heavy negative skew because travel and fatigue penalties dominated without a positive baseline.
+2. **Version 2 (Offset Adjustment & Evening Penalty):**  
+   - *Formula:* Raised base intercept to $+0.45$ and introduced a non-linear evening penalty: $-0.20 \times \max(0, \text{hour} - 18)$.
+   - *Change & Why:* Attempted to center the probability distribution while capturing late-shift fatigue.
+   - *Class Balance:* **67.8% accepted / 32.2% rejected**. Over-corrected; daytime baseline acceptance was unnaturally high.
+3. **Version 3 (Final Calibrated Rule):**  
+   - *Formula:* Lowered intercept to $+0.25$, adjusted fatigue slope to $-0.035$, introduced the compound interaction term $-0.0050 \times ((\text{dist} - 4) \times (\text{fatigue} - 30))$, and included historical worker acceptance rate.
+   - *Change & Why:* Captured the realistic ergonomic dynamic where long travel when already tired causes disproportionate decline rates, achieving near-perfect class balance.
+   - *Class Balance:* **52.02% accepted / 47.98% rejected** (15,607 accepted out of 30,000 samples).
+
+> [!IMPORTANT]
+> **Independence Confirmation:** The final rule was selected solely based on target class balance (aiming for a near-50/50 split so classification metrics like AUC, F1, and Brier score are mathematically informative) **before** training models and long **before** running the simulation. The synthetic rule was never chosen or tuned by observing how well ML or the tie-breaker performed in the simulation.
+
 ### Data Leakage Prevention (Grouped Splitting):
 Gig simulation benchmarks reuse underlying seeds to generate market conditions. Splitting offers uniformly at random would allow observations sharing identical simulation seeds to appear across train, validation, and test sets, causing severe optimistic data leakage.  
-To prevent this, `generate_ml_data.py` assigns a `sim_seed` (0 to 99) to each offer. A **GroupShuffleSplit** guarantees:
+To prevent this, `generate_ml_data.py` assigns a `sim_seed` (0 to 99) to each offer. A **GroupShuffleSplit** guarantees that seeds are strictly disjoint across partitions:
 $$\text{Seeds}(\text{Train}) \cap \text{Seeds}(\text{Val}) = \emptyset, \quad \text{Seeds}(\text{Train}) \cap \text{Seeds}(\text{Test}) = \emptyset, \quad \text{Seeds}(\text{Val}) \cap \text{Seeds}(\text{Test}) = \emptyset$$
 - **Train partition:** 21,141 rows (70 seeds)
 - **Validation partition:** 4,348 rows (15 seeds)
 - **Test partition:** 4,511 rows (15 seeds)
+
+*Scope Limitation:* Grouped splitting guarantees zero data leakage between simulation seeds generated by the same synthetic distribution. It does **not** prove that the model generalizes to unseen real-world market scenarios. Results reflect performance on the synthetic generator and do not demonstrate real-world deployment performance.
 
 ---
 
@@ -122,15 +163,50 @@ Three candidate model families were evaluated across 5 grouped folds on the trai
 ### Probability Calibration
 Raw gradient boosting predictions often exhibit miscalibrated confidence scores near 0 and 1. To ensure probabilities correspond to genuine empirical rates, the winning model was calibrated using **Sigmoid CalibratedClassifierCV** with 5-fold cross-validation.
 
-### Held-Out Test Evaluation (4,511 Unseen Offers)
-Metrics on the strictly held-out test partition demonstrate strong discrimination and probability reliability:
+### Held-Out Test Evaluation Across Candidate Models (4,511 Unseen Offers)
+All three models were evaluated on the held-out test partition:
 
+| Model Architecture | Test ROC-AUC | Test Accuracy | Test F1-Score | Status |
+|:---|:---:|:---:|:---:|:---|
+| **Logistic Regression** (Standardized) | 0.9325 | 85.19% | 0.8587 | Linear baseline |
+| **Random Forest Classifier** | 0.9272 | 84.88% | 0.8552 | Non-linear ensemble |
+| **HistGradientBoosting** (Raw) | 0.9387 | 85.92% | 0.8654 | Gradient boosted baseline |
+| **HistGradientBoosting (Calibrated)** | **0.9441** | **86.17%** | **0.8683** | **Production Selected** |
+| *Majority Class Baseline* | *0.5000* | *52.29%* | *0.6868* | *Reference* |
+
+### Detailed Test Metrics of Final Calibrated Classifier
 | Metric | Calibrated HistGradientBoosting | Majority Baseline | Interpretation |
 |:---|:---:|:---:|:---|
 | **ROC-AUC** | **0.9441** | 0.5000 | Excellent class separability across thresholds |
 | **Accuracy** | **86.17%** | 52.29% | +33.88% improvement over constant predictor |
 | **F1-Score** | **0.8683** | 0.6868 | High harmonic balance of precision and recall |
 | **Brier Score** | **0.0957** | 0.2495 | Sharp, well-calibrated probabilistic confidence |
+
+### Acceptance Model Sensitivity to Worker Earnings
+To verify whether the ML tie-breaker respects income equity, we evaluated the model's predicted acceptance probability as a function of `recent_earnings`:
+
+1. **Controlled Feature Sweep (All Other Features Held Fixed):**  
+   *Fixed conditions: distance = 4.0 km, skill = 80%, fatigue = 25.0, rating = 4.0, exp = 5 yrs, job value = ₹500, intensity = 0.65, hour = 14:00, past acceptance = 0.80.*
+
+   | Worker Recent Earnings | Predicted Acceptance Probability | Trend Direction |
+   |:---|:---:|:---|
+   | **₹0 (Under-earning)** | **0.9574 (95.7%)** | Maximum willingness |
+   | **₹1,000** | **0.9261 (92.6%)** | High willingness |
+   | **₹2,000** | **0.8661 (86.6%)** | High willingness |
+   | **₹3,000** | **0.7820 (78.2%)** | Moderate-high willingness |
+   | **₹4,000** | **0.6165 (61.7%)** | Moderate willingness |
+   | **₹5,000** | **0.5251 (52.5%)** | Neutral willingness |
+   | **₹6,000** | **0.2994 (29.9%)** | Low willingness |
+   | **₹7,500 (High-earning)** | **0.1340 (13.4%)** | Minimum willingness |
+
+2. **Empirical Distribution Across Dataset (by Earnings Bucket):**
+   - **₹0 – ₹1,500:** Mean Acceptance Probability = **$65.87\% \pm 36.59\%$** (6,109 samples)
+   - **₹1,500 – ₹3,000:** Mean Acceptance Probability = **$59.11\% \pm 37.98\%$** (5,968 samples)
+   - **₹3,000 – ₹4,500:** Mean Acceptance Probability = **$52.21\% \pm 38.38\%$** (5,987 samples)
+   - **₹4,500 – ₹6,000:** Mean Acceptance Probability = **$44.48\% \pm 37.61\%$** (5,974 samples)
+   - **₹6,000 – ₹7,500:** Mean Acceptance Probability = **$37.84\% \pm 35.66\%$** (5,962 samples)
+
+*Empirical Confirmation:* The numbers demonstrate a monotonic relationship where under-earning workers have substantially higher predicted acceptance chances. When two candidates are tied within the 2.0-point rule margin, the ML tie-breaker naturally favors the lower-earning candidate.
 
 ### Permutation Feature Importance
 Permutation importance computes the drop in ROC-AUC when a feature's values are randomly shuffled on the test set:
@@ -179,11 +255,14 @@ When scheduling bookings and updating worker fatigue capacity, service records f
 | **HistGradientBoostingRegressor** | **0.2452** | **0.3072** | **0.8884** |
 
 ### Held-Out Test Evaluation (2,250 Unseen Jobs)
-| Metric | HistGradientBoosting Regressor | Dummy Mean Baseline | Improvement |
+| Metric | HistGradientBoosting Regressor | Per-Service Category Mean Baseline | Improvement |
 |:---|:---:|:---:|:---:|
 | **Mean Absolute Error (MAE)** | **0.2452 hrs (14.7 mins)** | 0.3773 hrs (22.6 mins) | -35.0% error reduction |
 | **Root Mean Squared Error (RMSE)** | **0.3072 hrs (18.4 mins)** | 0.4807 hrs (28.8 mins) | -36.1% error reduction |
 | **Coefficient of Determination ($R^2$)** | **0.8884** | 0.7252 | High explained variance |
+
+*Exact Baseline Definition:*  
+The baseline is **not** a constant global mean (which would yield $R^2 \approx 0.0$). Instead, it is a **Per-Service Category Mean Baseline** that predicts the category-specific mean duration observed in the training partition for each trade (e.g. 1.8 hrs for plumbing, 3.5 hrs for painting, 2.5 hrs for carpentry, 1.2 hrs for general tasks). Because different trades have inherently different standard durations, this category-stratified mean already explains $R^2 = 0.7252$ of the variance. The HistGradientBoosting model significantly outperforms this baseline by learning non-linear adjustments driven by job intensity, worker experience level, and pricing valuation.
 
 ### Duration Permutation Feature Importance
 1. `service_type` (+0.6837): Trade category establishes the baseline workload (e.g. Painting vs. Plumbing).
@@ -272,6 +351,8 @@ An honest academic evaluation requires acknowledging the limitations of this imp
    The tie-breaking policy currently exploits the model greedily ($P(\text{accept})$ ranking). In a live platform, an exploration mechanism (e.g., $\epsilon$-greedy exploration or Upper Confidence Bound dispatching) would be required to avoid cold-start bias against newly onboarded workers who lack extensive acceptance history.
 3. **Bounded Impact by Design:**  
    Because ML is strictly bounded to a $2.0$-point score margin among top-3 candidates, the absolute acceptance rate uplift is moderate ($+1.10\%$). This is intentional: sacrificing cooperative equity for a larger acceptance jump would violate the platform's constitutional mission.
+4. **Grouped Split vs Real-World Generalization:**  
+   The grouped shuffle split across simulation seeds guarantees zero data leakage between records sharing the same synthetic generator seeds. However, it does **not** demonstrate real-world generalization or performance. The model has learned the mathematical regularities of our synthetic generator, and these metrics do not indicate how the system would perform against noisy, multi-faceted human behavior in the field.
 
 ---
 
