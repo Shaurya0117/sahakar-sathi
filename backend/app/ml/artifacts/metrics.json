@@ -1,0 +1,148 @@
+{
+  "trained_at": "2026-10-24T16:18:13.997147+00:00",
+  "random_seed": 42,
+  "acceptance_model": {
+    "model_name": "HistGradientBoosting",
+    "calibrated": true,
+    "calibration_method": "sigmoid",
+    "feature_order": [
+      "distance_km",
+      "skill_match_score",
+      "fatigue_index",
+      "rating",
+      "experience_years",
+      "recent_earnings",
+      "job_value",
+      "job_intensity",
+      "hour_of_day",
+      "past_acceptance_rate"
+    ],
+    "cv_results": {
+      "LogisticRegression": {
+        "mean_roc_auc": 0.9285016384793101,
+        "std_roc_auc": 0.0034768526111759
+      },
+      "RandomForest": {
+        "mean_roc_auc": 0.9258783349844577,
+        "std_roc_auc": 0.0037081030994492825
+      },
+      "HistGradientBoosting": {
+        "mean_roc_auc": 0.9347941933431031,
+        "std_roc_auc": 0.004285068207904808
+      }
+    },
+    "test_metrics": {
+      "roc_auc": 0.9440681184611336,
+      "accuracy": 0.861671469740634,
+      "f1_score": 0.8682988602785986,
+      "brier_score": 0.09570683807757799,
+      "baseline_accuracy": 0.5229439148747506,
+      "baseline_f1": 0.6867540029112081,
+      "baseline_brier": 0.24947515480630322
+    },
+    "permutation_importance": {
+      "distance_km": {
+        "mean": 0.12231700629244009,
+        "std": 0.003189936506767677
+      },
+      "skill_match_score": {
+        "mean": 0.03640455520343665,
+        "std": 0.002565485864103241
+      },
+      "fatigue_index": {
+        "mean": 0.13242789222955348,
+        "std": 0.0033734740519078656
+      },
+      "rating": {
+        "mean": 0.03253087518969513,
+        "std": 0.0024000475555870935
+      },
+      "experience_years": {
+        "mean": 0.014245706942170422,
+        "std": 0.0012812925391411534
+      },
+      "recent_earnings": {
+        "mean": 0.04665397961772606,
+        "std": 0.002542944415701586
+      },
+      "job_value": {
+        "mean": 0.07424515932811303,
+        "std": 0.0028404823598635336
+      },
+      "job_intensity": {
+        "mean": 0.005223942632108925,
+        "std": 0.0006307712702487857
+      },
+      "hour_of_day": {
+        "mean": 0.013224840088815892,
+        "std": 0.0008938498662863439
+      },
+      "past_acceptance_rate": {
+        "mean": 0.035271703245184596,
+        "std": 0.0018216487646562595
+      }
+    }
+  },
+  "duration_model": {
+    "model_name": "HistGradientBoosting",
+    "feature_order": [
+      "service_type",
+      "job_intensity",
+      "experience_years",
+      "job_value"
+    ],
+    "validation_scores": {
+      "Ridge": {
+        "mae": 0.25862562993945143,
+        "rmse": 0.3246124107807906,
+        "r2": 0.8765985454351433
+      },
+      "RandomForest": {
+        "mae": 0.25224144393517195,
+        "rmse": 0.3168751003269568,
+        "r2": 0.8824111163903136
+      },
+      "HistGradientBoosting": {
+        "mae": 0.24488058985384192,
+        "rmse": 0.30775068347374274,
+        "r2": 0.8890855599393881
+      }
+    },
+    "test_metrics": {
+      "mae": 0.24523140107645386,
+      "rmse": 0.30731631224166556,
+      "r2": 0.8876289151815575,
+      "baseline_mae": 0.3772479621805575,
+      "baseline_rmse": 0.4805439922295795,
+      "baseline_r2": 0.7252424396427919
+    },
+    "service_type_baselines": {
+      "ac": 2.381688973868706,
+      "carpentry": 2.7398830049261083,
+      "cleaning": 3.2445772409408775,
+      "electrical": 1.6400000000000001,
+      "general": 1.3160689215060626,
+      "painting": 3.8294306930693067,
+      "plumbing": 1.9505705329153604,
+      "repair": 2.1713600485731632
+    },
+    "permutation_importance": {
+      "service_type": {
+        "mean": 0.6836968180829868,
+        "std": 0.014356224490343886
+      },
+      "job_intensity": {
+        "mean": 0.0386817358273155,
+        "std": 0.0021030133066588957
+      },
+      "experience_years": {
+        "mean": 0.11744440280514919,
+        "std": 0.002987987484525075
+      },
+      "job_value": {
+        "mean": 0.13663608670627078,
+        "std": 0.002439832966020563
+      }
+    }
+  }
+}
