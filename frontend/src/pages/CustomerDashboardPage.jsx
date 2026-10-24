@@ -25,8 +25,44 @@ import {
   getMyServiceRequests,
   uploadServiceRequestPhoto,
 } from '../services/requestService'
-import { submitReview } from '../services/bookingService'
+import { submitReview, getCompletionCode } from '../services/bookingService'
 import toast from 'react-hot-toast'
+
+function CustomerCompletionCode({ bookingId }) {
+  const [code, setCode] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+    setLoading(true)
+    getCompletionCode(bookingId)
+      .then((data) => {
+        if (isMounted) setCode(data.code)
+      })
+      .catch((err) => {
+        console.error('Error fetching completion code:', err)
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [bookingId])
+
+  if (loading) {
+    return <div className="text-xs text-slate-500 py-1 animate-pulse">Loading completion code...</div>
+  }
+
+  if (!code) return null
+
+  return (
+    <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 my-2 text-center w-full">
+      <p className="text-xs font-semibold text-indigo-700">Share this code with the worker</p>
+      <p className="text-2xl font-mono font-extrabold tracking-widest text-indigo-900 mt-0.5">{code}</p>
+    </div>
+  )
+}
 
 export default function CustomerDashboardPage() {
   const { user } = useAuth()
@@ -987,15 +1023,17 @@ Thank you for choosing the Cooperative!
                         )}
 
                         {booking && booking.status === 'IN_PROGRESS' && (
-                          <MotionButton
-                            onClick={() => {
-                              toast.success("Job marked as done by customer. Signal sent to arbitration system.");
-                              // Real app would send API request here to finalize the booking status
-                            }}
-                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-700 text-white shadow shadow-emerald-500/20 text-xs font-bold rounded-2xl transition flex items-center gap-1"
-                          >
-                            <span>✅</span> Confirm Job Done
-                          </MotionButton>
+                          <div className="w-full space-y-2">
+                            <CustomerCompletionCode bookingId={booking.id} />
+                            <MotionButton
+                              onClick={() => {
+                                toast.success("Job marked as done by customer. Signal sent to arbitration system.");
+                              }}
+                              className="px-3 py-1 bg-emerald-500 hover:bg-emerald-700 text-white shadow shadow-emerald-500/20 text-xs font-bold rounded-2xl transition flex items-center gap-1"
+                            >
+                              <span>✅</span> Confirm Job Done
+                            </MotionButton>
+                          </div>
                         )}
 
                         {booking?.status === 'COMPLETED' && (

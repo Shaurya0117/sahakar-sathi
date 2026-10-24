@@ -71,3 +71,12 @@ export const completeJob = (bookingId, payload = null) => api.patch(`/bookings/$
  */
 export const submitReview = (bookingId, rating, review) => 
   api.post(`/bookings/${bookingId}/review`, { rating, review })
+
+/**
+ * Get job completion code (CUSTOMER only, status IN_PROGRESS).
+ * @param {number} bookingId
+ */
+export const getCompletionCode = async (bookingId) => {
+  const response = await api.get(`/bookings/${bookingId}/completion-code`);
+  return response.data;
+};

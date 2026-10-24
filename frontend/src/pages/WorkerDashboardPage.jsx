@@ -40,6 +40,8 @@ import { useLanguage } from '../context/LanguageContext'
 import toast from 'react-hot-toast'
 import WorkerVoiceAssistant from '../components/WorkerVoiceAssistant'
 import ProofOfWorkCapture from '../components/ProofOfWorkCapture'
+import api from '../services/api'
+import { refreshNonce, getQueue, enqueueProof, flushQueue } from '../services/proofNonceService'
 
 const PRESET_SKILLS = [
   'Wiring', 'Fan Repair', 'Switch Repair', 'Plumbing',
@@ -59,6 +61,22 @@ export default function WorkerDashboardPage() {
   const [successMsg, setSuccessMsg] = useState('')
   const [jobs, setJobs] = useState([])
   const [jobsLoading, setJobsLoading] = useState(false)
+  const [queueCount, setQueueCount] = useState(getQueue().length)
+
+  useEffect(() => {
+    refreshNonce(api)
+    const handleOnline = () => {
+      flushQueue(async (item) => {
+        await completeJob(item.bookingId, item.payload)
+        await fetchWorkerJobs()
+      }).then(() => setQueueCount(getQueue().length))
+    }
+    window.addEventListener('online', handleOnline)
+    if (navigator.onLine && getQueue().length > 0) {
+      handleOnline()
+    }
+    return () => window.removeEventListener('online', handleOnline)
+  }, [])
   
   // Voice feature states
   const [isDictating, setIsDictating] = useState(null) // holds job id
@@ -217,16 +235,28 @@ export default function WorkerDashboardPage() {
 
   const handleProofCaptured = async (proofData) => {
     try {
-      await completeJob(edgeAiModalJobId, {
-        proof_of_work_hash: proofData.proof_of_work_hash,
-        privacy_score: proofData.privacy_score
-      })
+      if (!navigator.onLine) {
+        enqueueProof({ bookingId: edgeAiModalJobId, payload: proofData })
+        setQueueCount(getQueue().length)
+        toast.success('Offline: Proof bundle saved to queue.')
+        setEdgeAiModalJobId(null)
+        return
+      }
+      await completeJob(edgeAiModalJobId, proofData)
       setSuccessMsg('Service completed successfully with Privacy-Preserving Proof of Work!')
       setEdgeAiModalJobId(null)
       await fetchWorkerJobs()
       await refresh()
     } catch (err) {
-      setError(err.response?.data?.detail || 'Failed to complete service.')
+      if (!err.response || err.response.status >= 500) {
+        enqueueProof({ bookingId: edgeAiModalJobId, payload: proofData })
+        setQueueCount(getQueue().length)
+        toast.success('Connection interrupted: Proof saved to queue.')
+        setEdgeAiModalJobId(null)
+        return
+      }
+      const errMsg = err.response?.data?.detail?.message || err.response?.data?.detail || 'Failed to complete service.'
+      setError(errMsg)
       setEdgeAiModalJobId(null)
     }
   }
@@ -437,6 +467,15 @@ export default function WorkerDashboardPage() {
 
         {/* Banners */}
         <AnimatePresence>
+          {queueCount > 0 && (
+            <motion.div className="p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold flex items-center justify-between" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }}>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping" />
+                <span>waiting to sync ({queueCount})</span>
+              </div>
+              <button onClick={() => { flushQueue(async (item) => { await completeJob(item.bookingId, item.payload); await fetchWorkerJobs(); }).then(() => setQueueCount(getQueue().length)); }} className="px-2 py-1 bg-amber-200 hover:bg-amber-300 text-amber-950 rounded-lg text-[10px] uppercase tracking-wider font-extrabold cursor-pointer">Sync Now</button>
+            </motion.div>
+          )}
           {fetchError && (
             <motion.div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs"
               initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
@@ -1262,6 +1301,8 @@ export default function WorkerDashboardPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="max-w-md w-full">
             <ProofOfWorkCapture
+              jobId={edgeAiModalJobId}
+              workerId={jobs.find(j => j.id === edgeAiModalJobId)?.worker_id || profile?.id || user?.worker_profile?.id || user?.id}
               serviceName={edgeJobServiceName}
               onProofCaptured={handleProofCaptured}
               onCancel={() => setEdgeAiModalJobId(null)}

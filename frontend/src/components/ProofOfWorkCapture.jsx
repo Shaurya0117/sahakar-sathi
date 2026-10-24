@@ -3,30 +3,20 @@
  *
  * This component captures a photo of completed work using the device's
  * built-in camera, computes a perceptual hash (pHash) ENTIRELY ON-DEVICE
- * using the Canvas API, and sends ONLY the hash to the server.
+ * using the Canvas API, and sends ONLY the signed proof bundle to the server.
  *
  * THE RAW IMAGE NEVER LEAVES THE BROWSER.
- *
- * Technical Flow:
- *   1. Open camera via navigator.mediaDevices.getUserMedia()
- *   2. Capture frame to <canvas>
- *   3. Downscale to 32x32 grayscale (perceptual hash input)
- *   4. Compute average hash (aHash) — 64-bit fingerprint
- *   5. Calculate privacy score based on image entropy
- *   6. Return { hash, privacyScore } to parent — NO image data transmitted
- *
- * Novel Claim:
- *   "Edge-computed perceptual hashing for service verification without
- *    server-side image storage, preserving customer home privacy."
  */
-import React, { useState, useRef, useCallback } from 'react'
+import React, { useState, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { buildCanonical, computeTag } from '../utils/proofBundle'
+import { getCachedNonce } from '../services/proofNonceService'
 
 // ── Perceptual Hash Algorithm (runs entirely in browser) ─────────────────────
 
 /**
  * Compute Average Hash (aHash) from image data.
- * 1. Resize image to 32x32
+ * 1. Resize image to 16x16
  * 2. Convert to grayscale
  * 3. Compute mean pixel value
  * 4. Generate hash: each bit = 1 if pixel > mean, else 0
@@ -113,19 +103,42 @@ function calculatePrivacyScore(canvas) {
 
 // ── React Component ──────────────────────────────────────────────────────────
 
-export default function ProofOfWorkCapture({ onProofCaptured, onCancel, serviceName = 'Service' }) {
+export default function ProofOfWorkCapture({
+  onProofCaptured,
+  onCancel,
+  serviceName = 'Service',
+  jobId = 0,
+  workerId = 0,
+}) {
   const [stage, setStage] = useState('ready') // ready | capturing | processing | done
   const [previewUrl, setPreviewUrl] = useState(null)
   const [proofResult, setProofResult] = useState(null)
+  const [customerCode, setCustomerCode] = useState('')
+  const [gpsLocation, setGpsLocation] = useState({ lat: null, lon: null })
   const [error, setError] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
   
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
 
+  // Check nonce availability
+  useEffect(() => {
+    const nonce = getCachedNonce()
+    if (!nonce) {
+      setError('Connect to the internet once to refresh')
+    }
+  }, [])
+
   // Start camera
   const startCamera = useCallback(async () => {
     setError(null)
+    const nonce = getCachedNonce()
+    if (!nonce) {
+      setError('Connect to the internet once to refresh')
+      return
+    }
+
     setStage('capturing')
     
     try {
@@ -156,8 +169,30 @@ export default function ProofOfWorkCapture({ onProofCaptured, onCancel, serviceN
     }
   }, [])
 
+  // Fetch GPS
+  const getCoordinates = () => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve({ lat: null, lon: null })
+        return
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          resolve({
+            lat: pos.coords.latitude,
+            lon: pos.coords.longitude,
+          })
+        },
+        (err) => {
+          resolve({ lat: null, lon: null })
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      )
+    })
+  }
+
   // Capture photo and compute hash
-  const captureAndHash = useCallback(() => {
+  const captureAndHash = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return
     
     setStage('processing')
@@ -171,7 +206,7 @@ export default function ProofOfWorkCapture({ onProofCaptured, onCancel, serviceN
     canvas.height = video.videoHeight || 480
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
     
-    // Generate preview (for user to see what they captured)
+    // Generate local preview (will not be sent)
     const previewDataUrl = canvas.toDataURL('image/jpeg', 0.3)
     setPreviewUrl(previewDataUrl)
     
@@ -182,23 +217,74 @@ export default function ProofOfWorkCapture({ onProofCaptured, onCancel, serviceN
     const hash = computePerceptualHash(canvas)
     const privacyScore = calculatePrivacyScore(canvas)
     
+    // Captured at: UTC ISO to the second with Z
+    const capturedAt = new Date().toISOString().split('.')[0] + 'Z'
+
+    // Fetch GPS coordinates
+    const coords = await getCoordinates()
+    setGpsLocation(coords)
+
+    // Clear the canvas pixel data immediately — image stays in memory only briefly
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    
     const result = {
       proof_of_work_hash: hash,
       privacy_score: privacyScore,
-      timestamp: new Date().toISOString(),
+      captured_at: capturedAt,
     }
     
     setProofResult(result)
     setStage('done')
-    
-    // Clear the canvas pixel data — image stays in memory only briefly
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
   }, [stopCamera])
 
-  // Submit proof
-  const handleSubmit = () => {
-    if (proofResult && onProofCaptured) {
-      onProofCaptured(proofResult)
+  // Submit proof bundle
+  const handleSubmit = async () => {
+    setError(null)
+    const nonceData = getCachedNonce()
+    if (!nonceData) {
+      setError('Connect to the internet once to refresh')
+      return
+    }
+
+    const trimmedCode = customerCode.trim()
+    if (!trimmedCode || trimmedCode.length !== 6) {
+      setError('Please enter the 6-digit code from customer')
+      return
+    }
+
+    if (!proofResult || !onProofCaptured) return
+
+    setSubmitting(true)
+    try {
+      const canonical = buildCanonical({
+        jobId: jobId || 0,
+        workerId: workerId || 0,
+        photoHash: proofResult.proof_of_work_hash,
+        lat: gpsLocation.lat,
+        lon: gpsLocation.lon,
+        capturedAt: proofResult.captured_at,
+        nonceDate: nonceData.date,
+        customerCode: trimmedCode,
+      })
+
+      const tag = await computeTag(nonceData.nonce, canonical)
+
+      const payload = {
+        proof_of_work_hash: proofResult.proof_of_work_hash,
+        privacy_score: proofResult.privacy_score,
+        lat: gpsLocation.lat,
+        lon: gpsLocation.lon,
+        captured_at: proofResult.captured_at,
+        nonce_date: nonceData.date,
+        customer_code: trimmedCode,
+        tag: tag,
+      }
+
+      onProofCaptured(payload)
+    } catch (err) {
+      setError('Failed to compute proof signature: ' + err.message)
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -206,6 +292,8 @@ export default function ProofOfWorkCapture({ onProofCaptured, onCancel, serviceN
   const handleRetake = () => {
     setProofResult(null)
     setPreviewUrl(null)
+    setCustomerCode('')
+    setError(null)
     setStage('ready')
   }
 
@@ -225,7 +313,7 @@ export default function ProofOfWorkCapture({ onProofCaptured, onCancel, serviceN
               <span>📸</span> Privacy-Preserving Proof of Work
             </h3>
             <p className="text-blue-100 text-xs mt-0.5">
-              Image stays on your device — only a hash fingerprint is sent
+              Image stays on your device — only a signed proof bundle is sent
             </p>
           </div>
           <button
@@ -255,7 +343,7 @@ export default function ProofOfWorkCapture({ onProofCaptured, onCancel, serviceN
                 <h4 className="font-bold text-slate-900 text-sm">Capture Proof of Completed {serviceName}</h4>
                 <p className="text-xs text-slate-500 mt-1">
                   Take a photo of the completed work. The image is processed entirely on your device
-                  using edge AI — only a compact perceptual hash (fingerprint) is transmitted to verify completion.
+                  using edge AI — only a compact perceptual hash and cryptographic proof bundle is transmitted.
                 </p>
               </div>
 
@@ -379,20 +467,40 @@ export default function ProofOfWorkCapture({ onProofCaptured, onCancel, serviceN
                     <div className="bg-white border border-slate-200 rounded-lg p-2">
                       <p className="text-[10px] font-bold text-slate-400 uppercase">Privacy Score</p>
                       <p className="text-lg font-extrabold text-emerald-600">{proofResult.privacy_score}/100</p>
-                      <p className="text-[10px] text-slate-500">
-                        {proofResult.privacy_score >= 80 ? 'Excellent' :
-                         proofResult.privacy_score >= 60 ? 'Good' :
-                         proofResult.privacy_score >= 40 ? 'Fair' : 'Low'}
-                      </p>
                     </div>
                     <div className="bg-white border border-slate-200 rounded-lg p-2">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Data Sent</p>
-                      <p className="text-lg font-extrabold text-blue-600">~64 bytes</p>
-                      <p className="text-[10px] text-slate-500">Hash only — 0 pixels</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">GPS Status</p>
+                      <p className="text-xs font-bold text-slate-800 mt-1">
+                        {gpsLocation.lat != null ? `${gpsLocation.lat.toFixed(4)}, ${gpsLocation.lon.toFixed(4)}` : 'Location NA'}
+                      </p>
                     </div>
                   </div>
                 </div>
+
+                {/* Customer Code Input */}
+                <div className="pt-2 border-t border-slate-200">
+                  <label className="block text-xs font-bold text-slate-800 mb-1">
+                    Customer Completion Code:
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={customerCode}
+                    onChange={(e) => setCustomerCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="6-digit code from customer"
+                    className="w-full px-3 py-2 text-center text-lg font-mono font-bold tracking-widest border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none bg-white text-slate-900"
+                  />
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Ask the customer for the 6-digit completion code displayed on their screen.
+                  </p>
+                </div>
               </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-700 font-medium">
+                  {error}
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex gap-2">
@@ -404,9 +512,10 @@ export default function ProofOfWorkCapture({ onProofCaptured, onCancel, serviceN
                 </button>
                 <button
                   onClick={handleSubmit}
-                  className="flex-2 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-xs rounded-xl hover:shadow-lg transition-all cursor-pointer"
+                  disabled={submitting || customerCode.trim().length !== 6}
+                  className="flex-2 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 disabled:opacity-50 text-white font-bold text-xs rounded-xl hover:shadow-lg transition-all cursor-pointer flex items-center justify-center gap-1"
                 >
-                  ✅ Submit Proof & Complete Job
+                  {submitting ? 'Signing Proof...' : '✅ Sign & Submit Proof'}
                 </button>
               </div>
             </motion.div>
