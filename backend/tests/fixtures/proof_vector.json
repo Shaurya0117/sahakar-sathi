@@ -1,0 +1,14 @@
+{
+  "worker_id": 42,
+  "nonce_date": "2026-10-24",
+  "proof_secret": "test-secret-for-vector-only",
+  "job_id": 7,
+  "photo_hash": "a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f506172839a4b5c6d7e8f9a",
+  "lat": 28.61234,
+  "lon": 77.20987,
+  "captured_at": "2026-10-24T09:30:15Z",
+  "customer_code": "042718",
+  "expected_nonce": "e0cc29d8e7711bc4f657a6535f2539ce0209f083b471ced3faa7e2a73a9961fe",
+  "expected_canonical": "v1|7|42|a1b2c3d4e5f60718293a4b5c6d7e8f9a0b1c2d3e4f506172839a4b5c6d7e8f9a|28.61234|77.20987|2026-10-24T09:30:15Z|2026-10-24|042718",
+  "expected_tag": "916b099e88e56de549e673ea6ea6e1b0f4ffe451a9aee61840afa34191f2b1aa"
+}

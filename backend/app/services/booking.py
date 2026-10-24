@@ -464,20 +464,31 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
             detail={"code": "E_STATE", "message": "Worker mismatch. You can only manage your own assigned jobs."}
         )
 
+    if payload and payload.tag is not None:
+        _check_proof_bundle(db, booking, worker, payload)
+
     if not can_transition_booking_status(booking.status, BookingStatus.COMPLETED):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot transition booking from {booking.status.value} to COMPLETED.",
         )
 
-    booking.status = BookingStatus.COMPLETED
-    
     if payload:
         booking.proof_of_work_hash = payload.proof_of_work_hash
         booking.privacy_score = payload.privacy_score
 
-        # Patent Feature: Verify proof-of-work hash
-        if payload.proof_of_work_hash is not None:
+        if payload.tag is not None:
+            booking.proof_tag = payload.tag
+            booking.proof_lat = payload.lat
+            booking.proof_lon = payload.lon
+            if payload.captured_at:
+                try:
+                    booking.proof_captured_at = datetime.fromisoformat(payload.captured_at.replace("Z", "+00:00"))
+                except Exception:
+                    booking.proof_captured_at = datetime.utcnow()
+            else:
+                booking.proof_captured_at = datetime.utcnow()
+        elif payload.proof_of_work_hash is not None:
             from app.services.proof_verification import verify_proof_of_work
             verification = verify_proof_of_work(
                 db=db,
@@ -491,9 +502,10 @@ def complete_booking(db: Session, booking_id: int, worker_user: User, payload: O
                     detail=verification["error"]
                 )
                 
-            # Store verification confidence in privacy_score if not already set
             if payload.privacy_score is None:
                 booking.privacy_score = verification.get("confidence", 0.0)
+
+    booking.status = BookingStatus.COMPLETED
 
     # Update ServiceRequest to COMPLETED
     req = db.query(ServiceRequest).filter(ServiceRequest.id == booking.request_id).first()
