@@ -42,6 +42,13 @@ export default function RecommendationCard({ rank, recommendation, onAllocate, a
               <span className="text-xs bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full font-medium">
                 {verification_status}
               </span>
+              {recommendation.ml_accept_probability != null && (
+                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-semibold border border-purple-200" title="Machine Learning Acceptance Probability">
+                  🎯 {Math.round(recommendation.ml_accept_probability * 100)}% accept chance
+                </span>
+              )}
+                {verification_status}
+              </span>
             </div>
             <p className="text-xs text-slate-500">
               {profession || 'Service Worker'} • {location || 'Service Area'}

@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     PROOF_NONCE_GRACE_DAYS: int = 2
     PROOF_CODE_MAX_TRIES: int = 5
 
+    # Machine Learning Settings
+    ML_ENABLED: bool = True
+    ML_TIEBREAK_TOP_K: int = 3
+    ML_TIEBREAK_MARGIN: float = 2.0
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -52,6 +57,11 @@ Global constants for platform configuration.
 
 # Worker Fatigue: Maximum allowable fatigue before assignments are blocked or excluded from matches.
 MAX_FATIGUE_THRESHOLD = 80.0
+
+# Machine Learning configuration shortcuts
+ML_ENABLED = settings.ML_ENABLED
+ML_TIEBREAK_TOP_K = settings.ML_TIEBREAK_TOP_K
+ML_TIEBREAK_MARGIN = settings.ML_TIEBREAK_MARGIN
 
 # Weibull Parameters per Appliance (Characteristic Life in days, Shape factor)
 # assumed values, not from real data.

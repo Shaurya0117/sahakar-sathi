@@ -281,7 +281,22 @@ def calculate_fatigue_capacity(db: Session, worker: Worker) -> float:
             service = db.query(Service).filter(Service.id == req.service_id).first()
             if service:
                 intensity = _get_job_intensity(service.name, service.category)
-                hours = (service.duration_minutes or 60) / 60.0
+                if service.duration_minutes is not None:
+                    hours = service.duration_minutes / 60.0
+                else:
+                    try:
+                        from app.ml.predictor import predict_hours
+                        job_val = float(req.final_price or service.base_price or 500.0)
+                        exp_yrs = int(worker.experience_years or 0)
+                        predicted = predict_hours(
+                            service_type=service.name or service.category or "General",
+                            intensity=intensity,
+                            experience_years=exp_yrs,
+                            job_value=job_val,
+                        )
+                        hours = predicted if predicted is not None else 1.0
+                    except Exception:
+                        hours = 1.0
 
         status_multiplier = 1.0
         if booking.status in (BookingStatus.IN_PROGRESS, BookingStatus.ACCEPTED):

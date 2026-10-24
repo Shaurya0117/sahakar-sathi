@@ -21,6 +21,7 @@ from app.routes.peer_verification import peer_router
 from app.routes.microcredit import router as microcredit_router
 from app.routes.governance import router as governance_router
 from app.routes.proof import proof_router
+from app.routes.ml import ml_router
 
 api_router = APIRouter()
 
@@ -38,6 +39,7 @@ api_router.include_router(peer_router, prefix="/api")
 api_router.include_router(microcredit_router, prefix="/api")
 api_router.include_router(governance_router, prefix="/api")
 api_router.include_router(proof_router, prefix="/api")
+api_router.include_router(ml_router, prefix="/api")
 
 from app.routes.india_stack import router as india_stack_router
 from app.routes.timebank import router as timebank_router

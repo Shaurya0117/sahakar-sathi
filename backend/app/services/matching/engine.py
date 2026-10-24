@@ -11,6 +11,8 @@ from typing import List, Optional
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from app.config import settings
+from app.models.booking import Booking, BookingStatus
 from app.models.service import Service
 from app.models.service_request import ServiceRequest
 from app.models.user import User
@@ -22,12 +24,17 @@ from app.schemas.matching import (
     WorkerRecommendation,
 )
 from app.services.matching.candidate_filter import filter_eligible_candidates
-from app.services.matching.equity_graph import calculate_equity_score
+from app.services.matching.equity_graph import (
+    calculate_equity_score,
+    _get_job_intensity,
+    _get_worker_recent_bookings,
+)
 from app.services.matching.explain import generate_match_explanation
 from app.services.matching.scorer import (
     calculate_availability_score,
     calculate_experience_score,
     calculate_bio_economic_metrics,
+    calculate_haversine_distance,
     calculate_location_score,
     calculate_rating_score,
     calculate_skill_score,
@@ -128,6 +135,45 @@ def get_matching_recommendations(
         # Retrieve trust score if available
         trust_score_val = getattr(worker, 'trust_score', None)
 
+        # Machine Learning: Acceptance Probability prediction
+        ml_prob = None
+        if getattr(settings, "ML_ENABLED", True):
+            try:
+                from app.ml.predictor import predict_accept
+                req_lat = getattr(request, "latitude", None)
+                req_lon = getattr(request, "longitude", None)
+                w_lat = getattr(worker, "latitude", None)
+                w_lon = getattr(worker, "longitude", None)
+                if req_lat is not None and req_lon is not None and w_lat is not None and w_lon is not None:
+                    dist_km = calculate_haversine_distance(req_lat, req_lon, w_lat, w_lon)
+                else:
+                    dist_map = {100.0: 1.5, 90.0: 3.5, 75.0: 7.5, 55.0: 15.0, 30.0: 25.0}
+                    dist_km = dist_map.get(location_score, 5.0)
+
+                rec_bookings = _get_worker_recent_bookings(db, worker.id, limit=10)
+                recent_earnings = sum(
+                    b.amount or 0 for b in rec_bookings if b.status == BookingStatus.COMPLETED
+                )
+                j_val = float(getattr(request, "final_price", None) or (service.base_price if service else None) or 500.0)
+                j_intensity = _get_job_intensity(service_name, service_category)
+                hr_of_day = getattr(request.created_at, "hour", 12) if getattr(request, "created_at", None) else 12
+                past_rate = float(getattr(worker, "acceptance_rate", 0.85) if getattr(worker, "acceptance_rate", None) is not None else 0.85)
+
+                ml_prob = predict_accept({
+                    "distance_km": dist_km,
+                    "skill_match_score": skill_score,
+                    "fatigue_index": bio_metrics.get("fatigue_index", 0.0),
+                    "rating": worker.rating or 4.0,
+                    "experience_years": worker.experience_years or 0,
+                    "recent_earnings": recent_earnings,
+                    "job_value": j_val,
+                    "job_intensity": j_intensity,
+                    "hour_of_day": hr_of_day,
+                    "past_acceptance_rate": past_rate,
+                })
+            except Exception:
+                ml_prob = None
+
         recommendations.append(
             WorkerRecommendation(
                 worker_id=worker.id,
@@ -142,11 +188,42 @@ def get_matching_recommendations(
                 breakdown=ScoreBreakdown(**breakdown_dict, equity=equity_breakdown),
                 reasons=reasons,
                 trust_score=trust_score_val,
+                ml_accept_probability=ml_prob,
+                ml_used=False,
             )
         )
 
-    # Step 5: Rank candidates descending by total score
+
+    # Step 5: Deterministic ranking descending by total score
     recommendations.sort(key=lambda r: r.score, reverse=True)
+
+    # Step 6: ML Tie-Break Policy (Top-K candidates within score margin)
+    ml_applied_flag = False
+    if getattr(settings, "ML_ENABLED", True) and len(recommendations) > 1:
+        top_score = recommendations[0].score
+        k_limit = min(len(recommendations), getattr(settings, "ML_TIEBREAK_TOP_K", 3))
+        margin = getattr(settings, "ML_TIEBREAK_MARGIN", 2.0)
+
+        tie_indices = [
+            i for i in range(k_limit)
+            if (top_score - recommendations[i].score) <= margin
+        ]
+
+        if len(tie_indices) > 1:
+            subset = [recommendations[i] for i in tie_indices]
+            if any(cand.ml_accept_probability is not None for cand in subset):
+                reordered = sorted(
+                    subset,
+                    key=lambda c: (
+                        c.ml_accept_probability if c.ml_accept_probability is not None else -1.0,
+                        c.score,
+                    ),
+                    reverse=True,
+                )
+                for rec in reordered:
+                    rec.ml_used = True
+                ml_applied_flag = True
+                recommendations[:len(reordered)] = reordered
 
     return RequestMatchingResponse(
         request_id=request.id,
@@ -155,5 +232,6 @@ def get_matching_recommendations(
         request_location=request.location,
         candidate_count=len(recommendations),
         recommendations=recommendations,
+        ml_used=ml_applied_flag,
     )
 

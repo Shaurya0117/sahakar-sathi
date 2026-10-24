@@ -69,6 +69,8 @@ class WorkerRecommendation(BaseModel):
     reasons: List[str]
     # Patent Feature: Trust Score (populated when available)
     trust_score: Optional[float] = None
+    ml_accept_probability: Optional[float] = None
+    ml_used: bool = False
 
 
 class RequestMatchingResponse(BaseModel):
@@ -80,3 +82,4 @@ class RequestMatchingResponse(BaseModel):
     request_location: str
     candidate_count: int
     recommendations: List[WorkerRecommendation]
+    ml_used: bool = False
