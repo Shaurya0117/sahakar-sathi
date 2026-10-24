@@ -141,6 +141,47 @@ def predict_accept(features_dict: Dict[str, Any]) -> Optional[float]:
         return None
 
 
+def predict_accept_batch(features_list: list) -> list:
+    """
+    Predict acceptance probabilities for a batch of candidate offers.
+    Returns list of float probabilities (or None for failures/disabled).
+    """
+    if not is_acceptance_model_ready() or not features_list:
+        return [None] * len(features_list)
+
+    try:
+        rows = []
+        for features_dict in features_list:
+            dist = float(np.clip(float(features_dict.get("distance_km", 5.0)), 0.0, 50.0))
+            skill = float(np.clip(float(features_dict.get("skill_match_score", 50.0)), 0.0, 100.0))
+            fatigue = float(np.clip(float(features_dict.get("fatigue_index", 0.0)), 0.0, 100.0))
+            rating = float(np.clip(float(features_dict.get("rating", 4.0)), 1.0, 5.0))
+            exp = float(np.clip(float(features_dict.get("experience_years", 0)), 0.0, 50.0))
+            earnings = float(np.clip(float(features_dict.get("recent_earnings", 2500.0)), 0.0, 100000.0))
+            job_val = float(np.clip(float(features_dict.get("job_value", 500.0)), 100.0, 10000.0))
+            intensity = float(np.clip(float(features_dict.get("job_intensity", 0.6)), 0.1, 1.0))
+            hour = int(np.clip(int(features_dict.get("hour_of_day", 12)), 0, 23))
+            past_rate = float(np.clip(float(features_dict.get("past_acceptance_rate", 0.8)), 0.0, 1.0))
+            rows.append({
+                "distance_km": dist,
+                "skill_match_score": skill,
+                "fatigue_index": fatigue,
+                "rating": rating,
+                "experience_years": exp,
+                "recent_earnings": earnings,
+                "job_value": job_val,
+                "job_intensity": intensity,
+                "hour_of_day": hour,
+                "past_acceptance_rate": past_rate,
+            })
+        batch_df = pd.DataFrame(rows)
+        probs = _acceptance_model.predict_proba(batch_df)[:, 1]
+        return [round(float(max(0.0, min(1.0, p))), 4) for p in probs]
+    except Exception as exc:
+        logger.warning("predict_accept_batch failed: %s", exc)
+        return [None] * len(features_list)
+
+
 def predict_hours(
     service_type: str,
     intensity: float,
