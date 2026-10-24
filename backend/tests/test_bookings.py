@@ -738,3 +738,17 @@ def test_frontend_cannot_override_cooperative_ownership():
     res = client.post(f"/api/requests/{req_id}/allocate", json={"worker_id": worker_id}, headers=auth_header(a2token))
     assert res.status_code == 400
     db.close()
+
+def test_start_without_arrive_returns_400():
+    req_id, worker_id, _, _ = setup_booking_base()
+    atoken = login("admin_b@test.com", "AdminPass123").json()["access_token"]
+    wtoken = login("worker_b@test.com", "Worker@1234").json()["access_token"]
+
+    alloc = client.post(f"/api/requests/{req_id}/allocate", json={"worker_id": worker_id}, headers=auth_header(atoken)).json()
+    booking_id = alloc["id"]
+
+    client.patch(f"/api/bookings/{booking_id}/accept", headers=auth_header(wtoken))
+    
+    # Try START without ARRIVE
+    res = client.patch(f"/api/bookings/{booking_id}/start", headers=auth_header(wtoken))
+    assert res.status_code == 400

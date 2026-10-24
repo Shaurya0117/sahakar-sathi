@@ -1,0 +1,2 @@
+import sys; sys.path.append('.'); from app.database.session import SessionLocal; from app.models.service_request import ServiceRequest; from app.services.matching.engine import find_best_matches; db = SessionLocal(); req = db.query(ServiceRequest).filter(ServiceRequest.status == 'PENDING').first(); print(f'Req: {req.id}'); [print(f'Worker {m[\
+worker_id\]}: Score={m[\total_score\]} (Fatigue: {m[\breakdown\][\fatigue_index\]})') for m in find_best_matches(db, req.id)]

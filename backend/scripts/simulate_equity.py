@@ -1,7 +1,15 @@
+import sys
+sys.path.append('.')
 import numpy as np
 import matplotlib.pyplot as plt
 import random
 import math
+import os
+
+from app.services.matching.scorer import (
+    WEIGHT_SKILL, WEIGHT_LOCATION, WEIGHT_AVAILABILITY,
+    WEIGHT_RATING, WEIGHT_EXPERIENCE, WEIGHT_BIO_ECONOMIC
+)
 
 def gini(incomes):
     incomes = np.sort(incomes)
@@ -22,6 +30,10 @@ def run_simulation(strategy="equity", num_jobs=200, num_workers=7, seed=42):
     worker_locs = [(random.uniform(0, 10), random.uniform(0, 10)) for _ in range(num_workers)]
     # Give workers random skill sets (each worker has 2 to 4 skills out of 10)
     worker_skills = [set(random.sample(range(10), random.randint(2, 4))) for _ in range(num_workers)]
+    # Random ratings 1 to 5
+    worker_ratings = [random.uniform(1.0, 5.0) for _ in range(num_workers)]
+    # Random experience 1 to 10
+    worker_exp = [random.randint(1, 10) for _ in range(num_workers)]
     
     total_travel = 0
     total_skill_match = 0
@@ -34,30 +46,51 @@ def run_simulation(strategy="equity", num_jobs=200, num_workers=7, seed=42):
         # Calculate distances for all workers
         dists = [dist(loc, job_loc) for loc in worker_locs]
         
-        # Available workers (assume all are available for simplicity)
         available = list(range(num_workers))
         
         if strategy == "nearest":
             # Pick the worker with minimum distance
             chosen = min(available, key=lambda w: dists[w])
-        else:
-            # Equity matcher: score based on real weights (e.g. 82% equity, 18% distance penalty)
-            # Normalizing earnings so max is 1.0 (to avoid massive penalty or 0)
+        elif strategy == "nearest_with_skill":
+            # Filter by skill, then pick nearest
+            skilled = [w for w in available if job_skill in worker_skills[w]]
+            if not skilled:
+                skilled = available
+            chosen = min(skilled, key=lambda w: dists[w])
+        else: # "equity" - The real matcher
             max_earn = max(worker_earnings) if max(worker_earnings) > 0 else 1.0
             scores = []
+            max_dist = 14.14 # sqrt(10^2 + 10^2)
+            
             for w in available:
-                # the scoring function prioritizes those with fewer earnings
-                # lower earnings = higher score
-                equity_score = 1.0 - (worker_earnings[w] / max_earn) 
+                # 1. Skill Score (0-100)
+                skill_score = 100.0 if job_skill in worker_skills[w] else 0.0
                 
-                # smaller distance = higher score
-                max_dist = 14.14 # sqrt(10^2 + 10^2)
-                dist_score = 1.0 - (dists[w] / max_dist)
+                # 2. Location Score (0-100)
+                d = min(dists[w], max_dist)
+                location_score = max(0.0, 100.0 * (1 - d/max_dist))
                 
-                # skill match = +20% bump if they have it
-                skill_bump = 0.2 if job_skill in worker_skills[w] else 0.0
+                # 3. Bio-Economic (Equity/Workload) Score (0-100)
+                # Lower earnings -> higher score
+                equity_score = max(0.0, 100.0 * (1.0 - (worker_earnings[w] / max_earn)))
                 
-                final_score = (equity_score * 0.82) + (dist_score * 0.18) + skill_bump
+                # 4. Rating Score (0-100)
+                rating_score = (worker_ratings[w] / 5.0) * 100.0
+                
+                # 5. Experience Score (0-100)
+                exp_score = min(100.0, (worker_exp[w] / 10.0) * 100.0)
+                
+                # 6. Availability (assume 100 for simulation)
+                avail_score = 100.0
+                
+                final_score = (
+                    (skill_score * WEIGHT_SKILL) +
+                    (location_score * WEIGHT_LOCATION) +
+                    (equity_score * WEIGHT_BIO_ECONOMIC) +
+                    (rating_score * WEIGHT_RATING) +
+                    (exp_score * WEIGHT_EXPERIENCE) +
+                    (avail_score * WEIGHT_AVAILABILITY)
+                )
                 scores.append(final_score)
                 
             chosen = available[np.argmax(scores)]
@@ -70,39 +103,60 @@ def run_simulation(strategy="equity", num_jobs=200, num_workers=7, seed=42):
 
 def generate_chart():
     baseline_ginis = []
+    skill_baseline_ginis = []
     equity_ginis = []
     b_dists = []
+    sb_dists = []
     e_dists = []
     b_skills = []
+    sb_skills = []
     e_skills = []
     
     for i in range(20):
         b_earn, b_dist, b_skill = run_simulation("nearest", seed=i)
+        sb_earn, sb_dist, sb_skill = run_simulation("nearest_with_skill", seed=i)
         e_earn, e_dist, e_skill = run_simulation("equity", seed=i)
         
         baseline_ginis.append(gini(b_earn))
+        skill_baseline_ginis.append(gini(sb_earn))
         equity_ginis.append(gini(e_earn))
+        
         b_dists.append(b_dist)
+        sb_dists.append(sb_dist)
         e_dists.append(e_dist)
+        
         b_skills.append(b_skill)
+        sb_skills.append(sb_skill)
         e_skills.append(e_skill)
         
-    print("nearest-worker vs equity matcher (20 seeds):")
-    print(f"Gini: {np.mean(baseline_ginis):.3f}±{np.std(baseline_ginis):.3f} vs {np.mean(equity_ginis):.3f}±{np.std(equity_ginis):.3f}")
-    print(f"Avg Travel Dist: {np.mean(b_dists):.2f}±{np.std(b_dists):.2f}km vs {np.mean(e_dists):.2f}±{np.std(e_dists):.2f}km")
-    print(f"Skill Match Rate: {np.mean(b_skills):.2f}±{np.std(b_skills):.2f} vs {np.mean(e_skills):.2f}±{np.std(e_skills):.2f}")
+    print("Simulation Results (20 seeds):")
+    print("==============================")
+    print("1. Nearest-Worker Baseline:")
+    print(f"   Gini Inequality: {np.mean(baseline_ginis):.3f} ± {np.std(baseline_ginis):.3f}")
+    print(f"   Avg Travel Dist: {np.mean(b_dists):.2f} ± {np.std(b_dists):.2f}km")
+    print(f"   Skill Match Rate: {np.mean(b_skills):.2f} ± {np.std(b_skills):.2f}")
+    
+    print("\n2. Nearest-Worker-With-Skill Baseline:")
+    print(f"   Gini Inequality: {np.mean(skill_baseline_ginis):.3f} ± {np.std(skill_baseline_ginis):.3f}")
+    print(f"   Avg Travel Dist: {np.mean(sb_dists):.2f} ± {np.std(sb_dists):.2f}km")
+    print(f"   Skill Match Rate: {np.mean(sb_skills):.2f} ± {np.std(sb_skills):.2f}")
+    
+    print("\n3. Sahakar Sathi Real Matcher (Equity + Skills + Logistics):")
+    print(f"   Gini Inequality: {np.mean(equity_ginis):.3f} ± {np.std(equity_ginis):.3f}")
+    print(f"   Avg Travel Dist: {np.mean(e_dists):.2f} ± {np.std(e_dists):.2f}km")
+    print(f"   Skill Match Rate: {np.mean(e_skills):.2f} ± {np.std(e_skills):.2f}")
     
     plt.figure(figsize=(10,6))
-    plt.plot(np.sort(run_simulation("nearest", seed=42)[0]), label="Nearest-Worker", marker="o")
-    plt.plot(np.sort(run_simulation("equity", seed=42)[0]), label="Equity", marker="s")
-    plt.title("Earnings Distribution (Synthetic Data)")
-    plt.xlabel("Worker Rank")
-    plt.ylabel("Earnings")
+    plt.plot(np.sort(run_simulation("nearest", seed=42)[0]), label="Nearest-Worker", marker="o", linestyle=":")
+    plt.plot(np.sort(run_simulation("nearest_with_skill", seed=42)[0]), label="Nearest-with-Skill", marker="^", linestyle="--")
+    plt.plot(np.sort(run_simulation("equity", seed=42)[0]), label="Real Matcher (Sahakar Sathi)", marker="s", linewidth=2)
+    plt.title("Earnings Distribution Comparison")
+    plt.xlabel("Worker Rank (Poorest to Richest)")
+    plt.ylabel("Total Earnings")
     plt.legend()
-    plt.savefig("C:/Users/shaur/Downloads/SIH26-main/SIH26-main/docs/equity_simulation_chart.png")
+    plt.grid(True, alpha=0.3)
+    plt.savefig("docs/equity_simulation_chart.png")
 
 if __name__ == "__main__":
-    import os
-    os.makedirs("C:/Users/shaur/Downloads/SIH26-main/SIH26-main/docs", exist_ok=True)
+    os.makedirs("docs", exist_ok=True)
     generate_chart()
-

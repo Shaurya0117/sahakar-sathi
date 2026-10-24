@@ -146,7 +146,7 @@ def calculate_bio_economic_metrics(worker: Worker, db: Session = None) -> dict:
     try:
         fatigue_capacity = calculate_fatigue_capacity(session, worker)
         fatigue_index = 100.0 - fatigue_capacity
-        is_fatigued = fatigue_index >= 90.0 # capacity <= 10.0
+        is_fatigued = fatigue_index >= MAX_FATIGUE_THRESHOLD
         
         # We reuse the income parity score from equity index
         income_parity = calculate_income_parity(session, worker)

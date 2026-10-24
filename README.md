@@ -1,15 +1,16 @@
 # Sahakar Sathi - Project Summary
 
-## Implemented vs Mocked Features
+Demo passwords are for local demos only. Rotate before any real deployment.
+
+## Implemented Features
 
 | Feature | Status | Details |
 |---------|--------|---------|
-| **Bio-Economic Matching Engine** | Implemented | `engine.py` assigns real multi-factor scores based on trust, workload, location, and earnings equality. Fairness rules heavily enforce workload limits. |
-| **Privacy-Preserving Proof of Work** | Implemented | Uses `proof_of_work_hash` generated at the client. Anti-replay is enforced server-side using Hamming distance against past completions. |
+| **Bio-Economic Matching Engine** | Implemented | `engine.py` assigns real multi-factor scores based on trust, workload, location, and earnings equality. Fairness rules enforce workload limits. |
+| **Proof of Completion** | Implemented | Job completion is verified with a signed proof bundle. |
 | **Voice Assistant** | Implemented | Supports fuzzy phonetics for commands (`accept`, `start`, checking jobs/earnings). Uses `SpeechSynthesis` and `webkitSpeechRecognition` to communicate in Hindi. |
-| **Byzantine Fault Tolerant Trust** | Implemented | `test_workers.py` proves a sybil attack algorithm with an adaptive damping factor filters out malicious fake reviews. |
+| **Bayesian Trust Score** | Implemented | Reputation scoring incorporates weighted history and exponential decay. |
 | **Simulated Equity / Forecasting** | Implemented | Python script uses Monte-Carlo to project future wealth distributions. |
-| **Device Sensors (Loc/Auth)** | Mocked | NOT IMPLEMENTED | Proof = single on-device hash + Hamming anti-replay; no before/after anywhere. |
 
 ## Seed Data & The 3-Voter Rule
 The tests (`test_matching.py`) and our reset scripts demonstrate the strict `3-voter rule` constraints:

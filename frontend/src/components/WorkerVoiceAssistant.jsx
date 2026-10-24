@@ -1,18 +1,17 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { fuzzyMatchIntent } from '../utils/phoneticMatcher'
 import { parseConfirmation } from '../utils/parseConfirmation'
+import { fuzzyMatchIntent } from '../utils/phoneticMatcher'
 
 export default function WorkerVoiceAssistant({ 
-  workerName = 'विशाल यादव',
+  workerName = 'Worker', 
   jobs = [], 
   onAcceptJob, 
   onStartJob 
 }) {
-  // Always default to Hindi for workers
   const [lang, setLang] = useState('hi')
   const isHindi = lang === 'hi'
-
+  
   const [isOpen, setIsOpen] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [pendingAction, setPendingAction] = useState(null)
@@ -40,31 +39,13 @@ export default function WorkerVoiceAssistant({
   const handleOpen = () => {
     setIsOpen(true)
     const greeting = isHindi 
-      ? `नमस्ते ${workerName} जी! मैं आपका आवाज़ सहायक हूँ। बोलिए, मैं क्या सहायता करूँ?`
+      ? `नमस्ते ${workerName} जी! मैं आपका वॉयस असिस्टेंट हूँ। बताइये, मैं आपकी कैसे मदद करूँ?`
       : `Hello ${workerName}! I am your voice assistant. How can I help you today?`
     setAssistantMessage(greeting)
     speak(greeting)
   }
 
-  const handleClose = () => {
-    setIsOpen(false)
-    if (recognitionRef.current) {
-      try { recognitionRef.current.stop() } catch (e) {}
-    }
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel()
-    }
-  }
-
-  // Helper for haptic feedback
-  const triggerHaptic = (pattern) => {
-    if ('vibrate' in navigator) {
-      navigator.vibrate(pattern)
-    }
-  }
-
-  // Handle Voice Commands (Patent Feature: Fuzzy Phonetic Intent Matching)
-  const processCommand = (cmdText) => {
+  const handleCommand = (cmdText) => {
     const text = cmdText.toLowerCase().trim()
     
     // Handle pending confirmations
@@ -74,7 +55,7 @@ export default function WorkerVoiceAssistant({
       if (parsed === 'yes') {
         if (pendingAction.type === 'ACCEPT') {
           onAcceptJob && onAcceptJob(pendingAction.jobId)
-          const msg = isHindi ? 'कार्य स्वीकार कर लिया गया है।' : 'Job accepted.'
+          const msg = isHindi ? 'काम स्वीकार कर लिया गया है।' : 'Job accepted.'
           speak(msg)
           setAssistantMessage(msg)
         } else if (pendingAction.type === 'START') {
@@ -85,15 +66,22 @@ export default function WorkerVoiceAssistant({
         }
         setPendingAction(null)
       } else if (parsed === 'no') {
-        const msg = isHindi ? 'कार्य रद्द कर दिया गया।' : 'Action cancelled.'
+        const msg = isHindi ? 'कार्रवाई रद्द कर दी गई।' : 'Action cancelled.'
         speak(msg)
         setAssistantMessage(msg)
         setPendingAction(null)
       } else {
-        // unclear
-        const msg = isHindi ? 'क्षमा करें, मुझे समझ नहीं आया। कृपया हाँ या ना कहें।' : 'Sorry, I didn\'t catch that. Please say yes or no.'
-        speak(msg)
-        setAssistantMessage(msg)
+        if (!pendingAction.retry) {
+          const msg = isHindi ? 'क्षमा करें, मुझे समझ नहीं आया। कृपया हां या ना कहें।' : 'Sorry, I didn\'t catch that. Please say yes or no.'
+          speak(msg)
+          setAssistantMessage(msg)
+          setPendingAction({ ...pendingAction, retry: true })
+        } else {
+          const msg = isHindi ? 'क्षमा करें, कार्रवाई रद्द कर दी गई।' : 'Sorry, action cancelled.'
+          speak(msg)
+          setAssistantMessage(msg)
+          setPendingAction(null)
+        }
       }
       setTranscript('')
       return
@@ -102,41 +90,42 @@ export default function WorkerVoiceAssistant({
     setTranscript(text)
 
     // Define fuzzy intent targets for different actions
-    const earningsIntents = ['कमाई', 'पैसे', 'रुपये', 'earning', 'balance', 'wallet', 'kamaai', 'kamayee', 'paisa']
-    const jobsIntents = ['काम', 'job', 'नया', 'order', 'kaam', 'naya']
-    const acceptIntents = ['स्वीकार', 'accept', 'हाँ', 'ha', 'yes', 'haan', 'theek', 'karo']
+    const earningsIntents = ['कमाई', 'पैसे', 'earning', 'balance', 'wallet', 'kamaai', 'kamayee', 'paisa', 'check earnings']
+    const jobsIntents = ['काम', 'job', 'order', 'kaam', 'naya', 'new jobs']
+    const acceptIntents = ['स्वीकार', 'accept', 'ha', 'yes', 'haan', 'theek', 'karo', 'काम स्वीकार']
     const startIntents = ['शुरू', 'start', 'chalu', 'shuru']
 
     // 1. Check Earnings
     if (fuzzyMatchIntent(text, earningsIntents)) {
       const reply = isHindi 
-        ? `${workerName} जी, आपके वॉलेट में कुल ₹${totalEarnings} हैं, और आपने ${completedJobs.length} काम सफलतापूर्वक पूरे किए हैं।`
+        ? `${workerName} जी, आपकी कुल कमाई ₹${totalEarnings} है, और आपने ${completedJobs.length} काम सफलतापूर्वक पूरे किए हैं।`
         : `${workerName}, your wallet balance is ₹${totalEarnings}, with ${completedJobs.length} completed jobs.`
       setAssistantMessage(reply)
       speak(reply)
       return
     }
 
-    // 2. Check Jobs
+    // 2. Check New Jobs
     if (fuzzyMatchIntent(text, jobsIntents)) {
       if (assignedJobs.length > 0) {
-        triggerHaptic([100, 50, 100, 50, 100]) // 3 short buzzes for new job
         const first = assignedJobs[0]
         const reply = isHindi 
-          ? `आपके पास ${assignedJobs.length} नया काम है: ${first.service_name}। स्थान है ${first.location}। ग्राहक ${first.customer_name} हैं। कुल ₹${first.amount || 499} मिलेंगे। क्या इसे स्वीकार करना है?`
+          ? `आपके पास ${assignedJobs.length} नया काम है: ${first.service_name}। स्थान है ${first.location}। ग्राहक आपको ₹${first.amount || 499} भुगतान करेंगे। क्या आप इसे स्वीकार करना चाहेंगे?`
           : `You have ${assignedJobs.length} new job: ${first.service_name} at ${first.location}. Payout is ₹${first.amount || 499}. Would you like to accept it?`
         setAssistantMessage(reply)
         speak(reply)
+        setPendingAction({ type: 'ACCEPT', jobId: first.id, retry: false })
       } else if (acceptedJobs.length > 0) {
         const first = acceptedJobs[0]
         const reply = isHindi 
-          ? `आपने ${first.service_name} का काम स्वीकार किया हुआ है। क्या आप काम शुरू करना चाहते हैं?`
+          ? `आपने ${first.service_name} को स्वीकार कर लिया है। क्या आप इसे शुरू करना चाहेंगे?`
           : `You have accepted ${first.service_name}. Would you like to start it?`
         setAssistantMessage(reply)
         speak(reply)
+        setPendingAction({ type: 'START', jobId: first.id, retry: false })
       } else {
         const reply = isHindi 
-          ? `फिलहाल आपके पास कोई नया काम लंबित नहीं है। जैसे ही काम आवंटित होगा, मैं आपको आवाज़ से बता दूँगा।`
+          ? `अभी कोई नया काम नहीं है। जब कोई काम आएगा तो मैं आपको बता दूंगा।`
           : `You currently have no pending jobs. I will notify you when a new job arrives.`
         setAssistantMessage(reply)
         speak(reply)
@@ -144,14 +133,13 @@ export default function WorkerVoiceAssistant({
       return
     }
 
-    // 3. Accept Job (Requires strict phonetic match, e.g. >= 100% tokens for 'accept')
-    if (fuzzyMatchIntent(text, acceptIntents, 2, true)) {
+    // 3. Accept Job
+    if (fuzzyMatchIntent(text, acceptIntents)) {
       if (assignedJobs.length > 0) {
-        triggerHaptic([300]) // 1 long buzz for acceptance
         const first = assignedJobs[0]
         onAcceptJob && onAcceptJob(first.id)
         const reply = isHindi 
-          ? `काम स्वीकार कर लिया गया है! मैंने ग्राहक ${first.customer_name} को बता दिया है कि आप आ रहे हैं।`
+          ? `काम स्वीकार कर लिया गया है! ग्राहक ${first.customer_name} को सूचित कर दिया गया है।`
           : `Job accepted successfully! Notification sent to customer ${first.customer_name}.`
         setAssistantMessage(reply)
         speak(reply)
@@ -164,13 +152,12 @@ export default function WorkerVoiceAssistant({
     }
 
     // 4. Start Job
-    if (fuzzyMatchIntent(text, startIntents, 2, true)) {
+    if (fuzzyMatchIntent(text, startIntents)) {
       if (acceptedJobs.length > 0) {
-        triggerHaptic([100, 100, 300]) // specific buzz for start
         const first = acceptedJobs[0]
         onStartJob && onStartJob(first.id)
         const reply = isHindi 
-          ? `काम शुरू कर दिया गया है। अपना काम ध्यान से करें और पूरा होने पर सेंसर सत्यापन दबाएं!`
+          ? `काम शुरू हो गया है! कृपया सुरक्षित रूप से अपना काम पूरा करें।`
           : `Job marked in progress. Complete your service safely!`
         setAssistantMessage(reply)
         speak(reply)
@@ -182,26 +169,23 @@ export default function WorkerVoiceAssistant({
       return
     }
 
-    // Fallback help
-    triggerHaptic([50, 50]) // error buzz
+    // Fallback Unrecognized
     const reply = isHindi 
-      ? `माफ़ कीजिये, मैं समझ नहीं पाया। आप बोल सकते हैं: 'मेरी कमाई बताओ', 'नया काम बताओ', या 'काम स्वीकार करो'।`
+      ? `मुझे समझ नहीं आया। क्या आप कह सकते हैं: 'मेरी कमाई बताओ', 'नया काम बताओ', या 'काम स्वीकार करो'?`
       : `Sorry, I did not catch that. You can say: 'check earnings', 'show new jobs', or 'accept job'.`
     setAssistantMessage(reply)
     speak(reply)
   }
 
-  // Toggle listening
-  const toggleListening = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      alert('Speech recognition is not supported in this browser. Please use Google Chrome or Microsoft Edge.')
+  const toggleListen = () => {
+    if (isListening) {
+      recognitionRef.current?.stop()
       return
     }
 
-    if (isListening) {
-      try { recognitionRef.current.stop() } catch (e) {}
-      setIsListening(false)
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert("Browser does not support speech recognition. Use Chrome.")
       return
     }
 
@@ -212,16 +196,17 @@ export default function WorkerVoiceAssistant({
 
     recognition.onstart = () => {
       setIsListening(true)
-      setTranscript(isHindi ? 'सुन रहा हूँ... बोलिए' : 'Listening...')
+      setTranscript(isHindi ? 'सुन रहा हूँ... बोलिये' : 'Listening...')
     }
 
-    recognition.onresult = (event) => {
-      const speech = event.results[0][0].transcript
-      processCommand(speech)
+    recognition.onresult = (e) => {
+      const text = e.results[0][0].transcript
+      handleCommand(text)
     }
 
     recognition.onerror = () => {
       setIsListening(false)
+      setTranscript('')
     }
 
     recognition.onend = () => {
@@ -229,162 +214,123 @@ export default function WorkerVoiceAssistant({
     }
 
     recognitionRef.current = recognition
-    try {
-      recognition.start()
-    } catch (e) {
-      setIsListening(false)
-    }
+    recognition.start()
   }
 
   return (
     <>
-      {/* ── Floating Voice Button (Worker Snabbit Style in Hindi) ─────── */}
-      <motion.div
-        className="fixed bottom-6 right-6 z-40 flex items-center gap-2"
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.5, type: 'spring' }}
-      >
-        <button
-          onClick={handleOpen}
-          className="flex items-center gap-2.5 px-4 py-3 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white font-extrabold text-xs rounded-full shadow-2xl hover:shadow-blue-500/50 hover:scale-105 transition-all border-2 border-white/20 group cursor-pointer"
-          title="आवाज़ सहायक (Voice Assistant)"
-        >
-          <span className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-          </span>
-          <span className="text-lg">🎙️</span>
-          <span>आवाज़ सहायक (बोलकर चलाएं)</span>
-        </button>
-      </motion.div>
-
-      {/* ── Interactive Voice Assistant Modal ─────────────────────────── */}
-      <AnimatePresence>
-        {isOpen && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-3">
+        <AnimatePresence>
+          {isOpen && (
             <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl border border-emerald-100 w-80 overflow-hidden"
+              initial={{ opacity: 0, y: 50, scale: 0.9 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 50, scale: 0.95 }}
-              className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 relative overflow-hidden"
+              exit={{ opacity: 0, y: 50, scale: 0.9 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             >
-              {/* Header with Language Toggle */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-2xl bg-blue-100 text-blue-700 flex items-center justify-center text-xl font-bold shadow-inner">
+              <div className="bg-emerald-50 p-4 border-b border-emerald-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <motion.div 
+                    className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-xl"
+                    animate={isListening ? { scale: [1, 1.2, 1] } : {}}
+                    transition={{ repeat: Infinity, duration: 1.5 }}
+                  >
                     🎙️
-                  </div>
+                  </motion.div>
                   <div>
-                    <h3 className="font-extrabold text-slate-900 text-base leading-tight">
-                      {isHindi ? 'सहकार साथी आवाज़ सहायक' : 'Sahakar Voice Assistant'}
+                    <h3 className="font-bold text-slate-800 text-sm">
+                      {isHindi ? 'सहकार वॉयस असिस्टेंट' : 'Sahakar Voice Assistant'}
                     </h3>
                     <p className="text-[11px] font-medium text-emerald-600">
-                      {isHindi ? '✓ बोलकर काम स्वीकारें और कमाई जानें' : '✓ Voice-controlled gig assistant'}
+                      {isHindi ? '🎙 आवाज़ से चलने वाला असिस्टेंट' : '🎙 Voice-controlled gig assistant'}
                     </p>
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-2">
-                  {/* Language switch button */}
-                  <button
+                <div className="flex gap-1">
+                  <button 
                     onClick={() => setLang(isHindi ? 'en' : 'hi')}
-                    className="px-2 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-[11px] font-bold text-slate-700 transition cursor-pointer"
-                    title="भाषा बदलें"
+                    className="px-2 py-1 bg-white border border-slate-200 text-slate-600 text-[10px] font-bold rounded-lg shadow-sm hover:bg-slate-50 transition"
                   >
                     {isHindi ? 'ENG' : 'हिंदी'}
                   </button>
-                  <button
-                    onClick={handleClose}
-                    className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center font-bold text-xs cursor-pointer"
-                  >
-                    ✕
-                  </button>
+                  <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-700">✖</button>
                 </div>
               </div>
 
-              {/* Assistant Message Speech Bubble */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50/70 border border-blue-100 rounded-2xl p-4 text-xs text-slate-800 space-y-2 mb-4 shadow-sm">
-                <div className="flex items-center gap-1.5 text-[10px] font-bold text-blue-700 uppercase tracking-wider">
-                  <span>🤖</span> {isHindi ? 'सहायक संदेश (आवाज़ में सुनें):' : 'Assistant Message:'}
+              <div className="p-5 space-y-4">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 text-xs text-slate-700 space-y-2">
+                  <div className="font-bold text-slate-500">
+                  <span>🤖</span> {isHindi ? 'असिस्टेंट मैसेज (आपसे बात कर रहा है):' : 'Assistant Message:'}
+                  </div>
+                  <p className="font-medium text-slate-900 leading-relaxed">{assistantMessage || '...'}</p>
                 </div>
-                <p className="font-bold text-slate-900 leading-relaxed text-sm">
-                  "{assistantMessage}"
-                </p>
+
                 {transcript && (
-                  <p className="text-[11px] text-slate-600 font-medium pt-2 border-t border-blue-100 flex items-center gap-1">
-                    <span>🗣️</span> <strong>{isHindi ? 'आपने कहा:' : 'You said:'}</strong> "{transcript}"
-                  </p>
+                  <div className="text-right">
+                    <span className="text-xs text-slate-500 block mb-1">
+                      <span>🗣️</span> <strong>{isHindi ? 'आपने कहा:' : 'You said:'}</strong> "{transcript}"
+                    </span>
+                  </div>
                 )}
-              </div>
-
-              {/* Big Mic Push-to-Talk Button with Waves */}
-              <div className="text-center py-2">
-                <div className="relative inline-block">
-                  {isListening && (
-                    <div className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-40"></div>
-                  )}
-                  <button
-                    onClick={toggleListening}
-                    className={`w-20 h-20 rounded-full flex flex-col items-center justify-center shadow-xl transition-all cursor-pointer ${
-                      isListening
-                        ? 'bg-rose-500 text-white scale-110 shadow-rose-500/50'
-                        : 'bg-gradient-to-tr from-blue-600 to-indigo-600 text-white hover:scale-105 shadow-blue-500/40 ring-4 ring-blue-100'
+                
+                <div className="flex justify-center pt-2">
+                  <button 
+                    onClick={toggleListen}
+                    className={`flex items-center justify-center gap-2 px-6 py-3 rounded-full font-bold shadow-lg transition-all ${
+                      isListening 
+                        ? 'bg-rose-500 text-white scale-110 shadow-rose-500/50' 
+                        : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
                     }`}
                   >
-                    <span className="text-2xl">{isListening ? '⏹️' : '🎙️'}</span>
-                    <span className="text-[10px] font-extrabold uppercase mt-1">
-                      {isListening ? (isHindi ? 'रूकें' : 'Stop') : (isHindi ? 'बोलें' : 'Speak')}
+                    <span className="text-2xl">{isListening ? '🛑' : '🎤'}</span>
+                    <span>
+                      {isListening ? (isHindi ? 'रुकें' : 'Stop') : (isHindi ? 'बोलें' : 'Speak')}
                     </span>
                   </button>
                 </div>
-                <p className="text-xs text-slate-600 font-bold mt-3">
-                  {isListening
-                    ? (isHindi ? '🔴 मैं सुन रहा हूँ... बोलिए!' : '🔴 Listening now... speak clearly!')
-                    : (isHindi ? 'माइक का बटन दबाएं और बोलें' : 'Tap mic to speak command')}
-                </p>
-              </div>
 
-              {/* Quick Action Chips (For Low-Literacy Workers) */}
-              <div className="pt-3 border-t border-slate-100 mt-3">
-                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                  {isHindi ? 'या नीचे दिए बटन पर सीधे दबाएं:' : 'Or tap a quick command:'}
+                <div className="text-center text-[10px] text-slate-500 mt-2 font-medium">
+                  {isListening 
+                    ? (isHindi ? 'मैं सुन रहा हूँ... साफ़ बोलें!' : '🟢 Listening now... speak clearly!') 
+                    : (isHindi ? 'बोलने के लिए माइक दबाएं' : 'Tap mic to speak command')}
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => processCommand('मेरी कमाई बताओ')}
-                    className="p-3 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 rounded-xl text-left border border-slate-200 text-xs font-bold text-slate-800 flex items-center gap-2 transition cursor-pointer"
-                  >
-                    <span className="text-base">💰</span>
-                    <span>{isHindi ? 'मेरी कमाई बताओ' : 'Check Earnings'}</span>
-                  </button>
-                  <button
-                    onClick={() => processCommand('नया काम बताओ')}
-                    className="p-3 bg-slate-50 hover:bg-blue-50 hover:border-blue-200 rounded-xl text-left border border-slate-200 text-xs font-bold text-slate-800 flex items-center gap-2 transition cursor-pointer"
-                  >
-                    <span className="text-base">📋</span>
-                    <span>{isHindi ? 'नया काम बताओ' : 'Check New Jobs'}</span>
-                  </button>
-                  <button
-                    onClick={() => processCommand('काम स्वीकार करो')}
-                    className="p-3 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-200 rounded-xl text-left border border-slate-200 text-xs font-bold text-emerald-800 flex items-center gap-2 transition cursor-pointer"
-                  >
-                    <span className="text-base">✅</span>
-                    <span>{isHindi ? 'काम स्वीकार करो' : 'Accept Job'}</span>
-                  </button>
-                  <button
-                    onClick={() => processCommand('काम शुरू करो')}
-                    className="p-3 bg-slate-50 hover:bg-indigo-50 hover:border-indigo-200 rounded-xl text-left border border-slate-200 text-xs font-bold text-indigo-800 flex items-center gap-2 transition cursor-pointer"
-                  >
-                    <span className="text-base">🚀</span>
-                    <span>{isHindi ? 'काम शुरू करो' : 'Start Job'}</span>
-                  </button>
+
+                <div className="pt-2 border-t border-slate-100 flex flex-wrap gap-2 justify-center">
+                  <span className="text-[10px] text-slate-400 w-full text-center mb-1">
+                    {isHindi ? 'या तुरंत कमांड दबाएं:' : 'Or tap a quick command:'}
+                  </span>
+                  {[
+                    { en: 'check earnings', hi: 'कमाई बताओ' },
+                    { en: 'new jobs', hi: 'नया काम बताओ' },
+                    { en: 'accept', hi: 'काम स्वीकार करो' },
+                    { en: 'start', hi: 'काम शुरू करो' }
+                  ].map(cmd => (
+                    <button 
+                      key={cmd.en}
+                      onClick={() => handleCommand(cmd.hi)}
+                      className="px-2 py-1 bg-white border border-slate-200 text-slate-600 rounded-md text-[10px] hover:bg-slate-50 hover:border-slate-300 transition"
+                    >
+                      {isHindi ? cmd.hi : cmd.en}
+                    </button>
+                  ))}
                 </div>
               </div>
             </motion.div>
-          </div>
+          )}
+        </AnimatePresence>
+
+        {!isOpen && (
+          <motion.button
+            onClick={handleOpen}
+            className="w-14 h-14 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full flex items-center justify-center text-white shadow-xl shadow-emerald-500/30 hover:shadow-2xl transition"
+            whileHover={{ scale: 1.1, rotate: 5 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <span className="text-2xl">🎤</span>
+          </motion.button>
         )}
-      </AnimatePresence>
+      </div>
     </>
   )
 }

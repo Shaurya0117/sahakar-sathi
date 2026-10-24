@@ -243,7 +243,7 @@ export default function AdminDashboardPage() {
             <MapContainer center={[28.6692, 77.4538]} zoom={12} scrollWheelZoom={false} className="h-full w-full">
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               
               {/* Dummy Workers */}

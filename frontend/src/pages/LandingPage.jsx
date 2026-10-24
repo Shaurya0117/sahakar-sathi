@@ -30,16 +30,16 @@ export default function LandingPage() {
   ]
 
   return (
-    <AnimatedPage className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <AnimatedPage className="min-h-screen bg-slate-50 text-emerald-950 flex flex-col font-sans">
       <PortalHeader />
 
       {/* ── Premium Cooperative Hero Section ────────────────────────── */}
-      <section className="relative bg-cream-50 pt-32 pb-24 overflow-hidden">
+      <section className="relative bg-white pt-32 pb-24 overflow-hidden">
         {/* Ambient Animated Blobs */}
         <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
-          <div className="absolute top-[-10%] left-[-5%] w-96 h-96 bg-emerald-200/40 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" style={{ animationDuration: '7s' }}></div>
-          <div className="absolute top-[20%] right-[-5%] w-[30rem] h-[30rem] bg-amber-100/50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" style={{ animationDuration: '9s', animationDelay: '1s' }}></div>
-          <div className="absolute bottom-[-10%] left-[20%] w-[25rem] h-[25rem] bg-teal-100/50 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float" style={{ animationDuration: '8s', animationDelay: '2s' }}></div>
+          <div className="absolute top-[-10%] left-[-5%] w-96 h-96 bg-slate-100 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" style={{ animationDuration: '7s' }}></div>
+          <div className="absolute top-[20%] right-[-5%] w-[30rem] h-[30rem] bg-slate-50 rounded-full mix-blend-multiply filter blur-3xl opacity-70 animate-float" style={{ animationDuration: '9s', animationDelay: '1s' }}></div>
+          <div className="absolute bottom-[-10%] left-[20%] w-[25rem] h-[25rem] bg-slate-100 rounded-full mix-blend-multiply filter blur-3xl opacity-60 animate-float" style={{ animationDuration: '8s', animationDelay: '2s' }}></div>
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center relative z-10">
@@ -50,20 +50,20 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="inline-block px-4 py-1.5 rounded-full bg-emerald-100/50 border border-emerald-200/50 backdrop-blur-md"
+              className="inline-block px-4 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm backdrop-blur-md"
             >
-              <span className="text-emerald-800 text-sm font-bold tracking-wide">🏆 Fair & Transparent Cooperative</span>
+              <span className="text-slate-800 text-sm font-bold tracking-wide">🏆 Fair & Transparent Cooperative</span>
             </motion.div>
 
             <motion.h1
-              className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-slate-900 leading-[1.05]"
+              className="text-5xl sm:text-6xl lg:text-7xl font-extrabold tracking-tighter text-emerald-950 leading-[1.05]"
               initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1], delay: 0.1 }}
             >
-              Expert services by <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">
-                your local community
+              Premium home services by <br />
+              <span className="text-emerald-950">
+                verified professionals
               </span>
             </motion.h1>
 
@@ -83,7 +83,7 @@ export default function LandingPage() {
               transition={{ delay: 0.5, duration: 0.6 }}
             >
               <Link to="/customer">
-                <MotionButton className="w-full sm:w-auto px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
+                <MotionButton className="w-full sm:w-auto px-8 py-4 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2">
                   Book a Service <span className="text-xl">→</span>
                 </MotionButton>
               </Link>
@@ -110,18 +110,18 @@ export default function LandingPage() {
               <div className="flex gap-4 items-center mb-4">
                 <img src="https://images.unsplash.com/photo-1607990281513-2c110a25bd8c?auto=format&fit=crop&q=80&w=150&h=150" alt="Plumber" className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm" />
                 <div>
-                  <h3 className="font-bold text-slate-900 text-lg">Rajesh K.</h3>
+                  <h3 className="font-bold text-emerald-950 text-lg">Rajesh K.</h3>
                   <p className="text-emerald-600 font-medium text-sm">Master Plumber</p>
                 </div>
               </div>
-              <div className="flex justify-between items-center bg-white/50 rounded-xl p-3 border border-white/60">
+              <div className="flex justify-between items-center bg-white/50 rounded-2xl p-3 border border-white/60">
                 <div>
                   <div className="text-xs text-slate-500">Trust Score</div>
-                  <div className="font-bold text-slate-900">98/100</div>
+                  <div className="font-bold text-emerald-950">98/100</div>
                 </div>
                 <div className="text-right">
                   <div className="text-xs text-slate-500">Rating</div>
-                  <div className="font-bold text-slate-900 flex items-center gap-1">4.9 <span className="text-amber-500">★</span></div>
+                  <div className="font-bold text-emerald-950 flex items-center gap-1">4.9 <span className="text-amber-500">★</span></div>
                 </div>
               </div>
             </motion.div>
@@ -134,7 +134,7 @@ export default function LandingPage() {
               <div className="flex gap-3 items-center">
                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-xl border border-white shadow-sm">⚡</div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Sita Devi</h3>
+                  <h3 className="font-bold text-emerald-950 text-sm">Sita Devi</h3>
                   <p className="text-slate-500 text-xs">Electrician</p>
                 </div>
               </div>
@@ -148,7 +148,7 @@ export default function LandingPage() {
               <div className="flex gap-3 items-center mb-2">
                 <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 text-xl border border-white shadow-sm">🧹</div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-sm">Amit Singh</h3>
+                  <h3 className="font-bold text-emerald-950 text-sm">Amit Singh</h3>
                   <p className="text-slate-500 text-xs">Deep Cleaning</p>
                 </div>
               </div>
@@ -166,7 +166,7 @@ export default function LandingPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-20 flex-1 w-full space-y-24">
         <ScrollReveal direction="up">
           <div className="flex flex-col items-center text-center mb-12">
-            <h2 className="text-4xl font-extrabold text-slate-900 mb-4 tracking-tight">Our Services</h2>
+            <h2 className="text-4xl font-extrabold text-emerald-950 mb-4 tracking-tighter">Our Services</h2>
             <div className="w-24 h-1.5 bg-emerald-500 rounded-full mb-4"></div>
             <p className="text-slate-600 max-w-2xl font-medium">From deep cleaning to expert electrical work, our cooperative members are fully vetted and ready to help.</p>
           </div>
@@ -192,7 +192,7 @@ export default function LandingPage() {
                       {svc.icon}
                     </div>
                     <div>
-                      <h3 className="font-bold text-slate-900 text-lg mb-1 group-hover:text-emerald-700 transition-colors">{svc.title}</h3>
+                      <h3 className="font-bold text-emerald-950 text-lg mb-1 group-hover:text-emerald-700 transition-colors">{svc.title}</h3>
                       <p className="text-slate-500 text-sm font-medium">{svc.count}</p>
                     </div>
                   </div>
@@ -205,14 +205,14 @@ export default function LandingPage() {
         {/* ── Multi-Channel Booking Section ─────────────────────────── */}
         {/* ── Multi-Channel Booking Section ─────────────────────────── */}
         <ScrollReveal direction="up" delay={0.1}>
-          <div className="bg-slate-900 rounded-[3rem] p-10 sm:p-16 shadow-2xl relative overflow-hidden">
+          <div className="bg-slate-900 rounded-[3rem] p-10 sm:p-16 shadow-2xl relative overflow-hidden border border-slate-800">
             <motion.div
-              className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-emerald-700 rounded-full blur-3xl opacity-30 pointer-events-none"
+              className="absolute top-0 right-0 -mt-20 -mr-20 w-96 h-96 bg-emerald-900/50 rounded-full blur-3xl opacity-30 pointer-events-none"
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
             />
             <motion.div
-              className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-blue-600 rounded-full blur-3xl opacity-20 pointer-events-none"
+              className="absolute bottom-0 left-0 -mb-20 -ml-20 w-80 h-80 bg-emerald-900/50 rounded-full blur-3xl opacity-20 pointer-events-none"
               animate={{ scale: [1, 1.3, 1] }}
               transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
             />
@@ -240,7 +240,7 @@ export default function LandingPage() {
               >
                 <div className="space-y-5 text-center">
                   <FloatingElement amplitude={5} delay={0}>
-                    <div className="w-16 h-16 mx-auto rounded-full bg-white/20 text-white text-3xl flex items-center justify-center font-bold border border-white/30 group-hover:bg-white group-hover:text-slate-900 transition-all duration-300">
+                    <div className="w-16 h-16 mx-auto rounded-full bg-white/20 text-white text-3xl flex items-center justify-center font-bold border border-white/30 group-hover:bg-white group-hover:text-emerald-950 transition-all duration-300">
                       🌐
                     </div>
                   </FloatingElement>
@@ -250,7 +250,7 @@ export default function LandingPage() {
                   </p>
                 </div>
                 <Link to="/customer">
-                  <MotionButton className="w-full text-center py-3 px-4 bg-white hover:bg-slate-50 text-slate-900 font-bold text-sm rounded-xl transition shadow-lg">
+                  <MotionButton className="w-full text-center py-3 px-4 bg-white hover:bg-slate-50 text-emerald-950 font-bold text-sm rounded-2xl transition shadow-lg">
                     Request Online ➔
                   </MotionButton>
                 </Link>
@@ -260,7 +260,7 @@ export default function LandingPage() {
               <motion.div
                 variants={fadeInUp}
                 whileHover={{ y: -8, scale: 1.02 }}
-                className="bg-emerald-600/20 backdrop-blur-xl p-8 rounded-3xl border border-emerald-400/30 shadow-xl flex flex-col justify-between space-y-8 group"
+                className="bg-emerald-700/20 backdrop-blur-xl p-8 rounded-3xl border border-emerald-400/30 shadow-xl flex flex-col justify-between space-y-8 group"
               >
                 <div className="space-y-5 text-center">
                   <FloatingElement amplitude={5} delay={0.5}>
@@ -274,7 +274,7 @@ export default function LandingPage() {
                   </p>
                 </div>
                 <a href="https://wa.me/919876543210?text=Hi" target="_blank" rel="noreferrer">
-                  <MotionButton className="w-full text-center py-3 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-emerald-500/30">
+                  <MotionButton className="w-full text-center py-3 px-4 bg-emerald-500 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl transition shadow-lg shadow-emerald-500/30">
                     Message on WhatsApp
                   </MotionButton>
                 </a>
@@ -298,7 +298,7 @@ export default function LandingPage() {
                   </p>
                 </div>
                 <a href="tel:18001232667">
-                  <MotionButton className="w-full text-center py-3 px-4 bg-white/20 hover:bg-white/30 text-white font-bold text-sm rounded-xl transition backdrop-blur-md">
+                  <MotionButton className="w-full text-center py-3 px-4 bg-white/20 hover:bg-white/30 text-white font-bold text-sm rounded-2xl transition backdrop-blur-md">
                     1800-123-COOP
                   </MotionButton>
                 </a>
@@ -310,7 +310,7 @@ export default function LandingPage() {
         {/* ── How It Works ────────────────────────────────────────── */}
         <ScrollReveal direction="up" delay={0.15}>
           <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-900 mb-8 text-center">
+            <h2 className="text-lg font-bold text-emerald-950 mb-8 text-center">
               How Cooperative Service Allocation Works
             </h2>
             <motion.div
@@ -340,10 +340,10 @@ export default function LandingPage() {
                     {item.icon}
                   </motion.div>
                   <div className="flex items-center justify-center gap-2">
-                    <span className="w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">
+                    <span className="w-6 h-6 rounded-full bg-emerald-700 text-white text-xs font-bold flex items-center justify-center">
                       {item.step}
                     </span>
-                    <h4 className="font-bold text-slate-900 text-sm">{item.title}</h4>
+                    <h4 className="font-bold text-emerald-950 text-sm">{item.title}</h4>
                   </div>
                   <p className="text-xs text-slate-500">{item.desc}</p>
                 </motion.div>

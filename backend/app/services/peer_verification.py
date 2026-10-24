@@ -70,6 +70,7 @@ def submit_peer_vote(db: Session, voter_id: int, candidate_id: int, is_positive:
             voter_votes = json.loads(voter.peer_votes) if isinstance(voter.peer_votes, str) else voter.peer_votes
         except Exception:
             pass
+    if not isinstance(voter_votes, list): voter_votes = []
     for v in voter_votes:
         if v.get("voter_id") == candidate_id:
             raise ValueError("Mutual vouching is prohibited.")
@@ -95,6 +96,7 @@ def submit_peer_vote(db: Session, voter_id: int, candidate_id: int, is_positive:
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
     
+    if not isinstance(votes, list): votes = []
     votes.append(new_vote)
     
     # Save back

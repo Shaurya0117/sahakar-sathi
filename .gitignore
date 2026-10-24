@@ -73,3 +73,19 @@ desktop.ini
 *.swo
 .rocketride/
 backend/cooperative.db
+
+# Helper Scripts and output
+fix_*.py
+patch_*.py
+*pytest_out*
+update_db.py
+backend/pytest_out.txt
+apply_*.py
+polish_*.py
+
+# Private uploads
+private_uploads/
+backend/private_uploads/
+
+# Confidential Claim Map
+docs/claim_map.md

@@ -25,9 +25,9 @@ export default function PortalHeader() {
       {/* Main Header Container - Glassmorphism */}
       <div className="glass-card flex items-center justify-between px-6 py-3">
         {/* Brand Identity */}
-        <Link to="/" className="flex items-center gap-3 text-slate-900 group">
+        <Link to="/" className="flex items-center gap-3 text-emerald-950 group">
           <motion.div
-            className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white flex items-center justify-center font-bold shadow-md"
+            className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold shadow-md"
             whileHover={{ scale: 1.1, rotate: 5 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -40,8 +40,8 @@ export default function PortalHeader() {
           </motion.div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-xl tracking-tight text-slate-900 font-sans">Sahakar Sathi</span>
-              <span className="text-[10px] font-semibold uppercase tracking-wider bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+              <span className="font-extrabold text-xl tracking-tight text-emerald-950 font-sans">Sahakar Sathi</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wider bg-slate-200 text-emerald-950 px-2 py-0.5 rounded-full">
                 Co-op
               </span>
             </div>
@@ -59,14 +59,14 @@ export default function PortalHeader() {
           ].filter(i => i.show).map((item) => (
             <motion.div key={item.label} whileHover={{ y: -1 }} whileTap={{ y: 1 }}>
               {item.isAnchor ? (
-                <a href={item.to} className="hover:text-blue-700 transition relative group">
+                <a href={item.to} className="hover:text-emerald-950 transition relative group">
                   {item.label}
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 rounded transition-all group-hover:w-full" />
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-emerald-700 rounded transition-all group-hover:w-full" />
                 </a>
               ) : (
-                <Link to={item.to} className="hover:text-blue-700 transition relative group">
+                <Link to={item.to} className="hover:text-emerald-950 transition relative group">
                   {item.label}
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 rounded transition-all group-hover:w-full" />
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-emerald-700 rounded transition-all group-hover:w-full" />
                 </Link>
               )}
             </motion.div>
@@ -82,10 +82,10 @@ export default function PortalHeader() {
                 })
               })
             }}
-            className="hover:text-blue-700 transition relative group"
+            className="hover:text-emerald-950 transition relative group"
           >
             Help & Support
-            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-600 rounded transition-all group-hover:w-full" />
+            <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-emerald-700 rounded transition-all group-hover:w-full" />
           </motion.button>
         </nav>
 
@@ -95,7 +95,7 @@ export default function PortalHeader() {
           <select 
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="hidden sm:block px-2 py-1.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 outline-none focus:ring-2 focus:ring-blue-100 cursor-pointer"
+            className="hidden sm:block px-2 py-1.5 bg-slate-50 border border-slate-200 text-xs font-semibold rounded-lg text-slate-700 outline-none focus:ring-2 focus:ring-slate-200 cursor-pointer"
           >
             <option value="en">A/अ English</option>
             <option value="hi">A/अ हिंदी</option>
@@ -130,7 +130,7 @@ export default function PortalHeader() {
               </Link>
               <Link to="/register">
                 <motion.button
-                  className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-full shadow-sm transition"
+                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-full shadow-sm transition"
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.97 }}
                 >

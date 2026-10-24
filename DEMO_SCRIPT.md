@@ -8,7 +8,7 @@
 **Act 1: The Bio-Economic Match**
 - Open the Admin / Cooperative Dashboard (Login as Cooperative Admin).
 - Click on "Auto-Assign" for a pending booking.
-- Point out the **Bio-Economic Matching Breakdown**: Show how the score sums to 1.0 (e.g. 50% trust, 30% fairness, 20% logistics).
+- Point out the **Bio-Economic Matching Breakdown**: Show how the score sums to 1.0.
 
 **Act 2: The Voice Assistant**
 - Open the Worker Portal (Login as `vishal@test.com`, pw: `password`).
@@ -18,10 +18,9 @@
 - Say "Accept" again, then say "Yes" to accept the job.
 - Say "Start" and confirm with "Yes".
 
-**Act 3: Privacy-Preserving Proof of Work**
+**Act 3: Verification**
 - While in the Active Job view as the worker, click **Complete Job**.
-- The system will ask for a photo. Upload any sample image.
-- Point out that the system hashes the photo client-side and transmits ONLY the `proof_of_work_hash` to the backend.
+- Job completion is verified with a signed proof bundle.
 
 **Act 4: Worker Profile & Fatigue**
 - Go to the Worker Profile tab.

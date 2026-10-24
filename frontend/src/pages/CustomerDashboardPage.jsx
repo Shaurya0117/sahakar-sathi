@@ -347,14 +347,14 @@ Thank you for choosing the Cooperative!
   }
 
   return (
-    <AnimatedPage className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
+    <AnimatedPage className="min-h-screen bg-slate-50 text-emerald-950 flex flex-col font-sans">
       <PortalHeader />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 flex-1 w-full space-y-8">
 
         {/* ── Welcome Header ─────────────────────────────────────── */}
         <motion.div
-          className="relative bg-gradient-to-r from-blue-900 to-slate-900 p-8 rounded-2xl shadow-xl overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-white"
+          className="relative bg-slate-900 p-8 rounded-2xl shadow-xl overflow-hidden flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 text-white border border-slate-800"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -373,12 +373,12 @@ Thank you for choosing the Cooperative!
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <span className="bg-blue-500/20 text-blue-200 font-bold text-[10px] px-2.5 py-1 rounded-full border border-blue-400/30 tracking-wider uppercase">
+              <span className="bg-blue-500/20 text-slate-300 font-bold text-[10px] px-2.5 py-1 rounded-full border border-blue-400/30 tracking-wider uppercase">
                 Customer Marketplace
               </span>
             </motion.div>
             <motion.h1
-              className="text-3xl font-extrabold mt-1 tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200"
+              className="text-3xl font-extrabold mt-1 tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
@@ -386,7 +386,7 @@ Thank you for choosing the Cooperative!
               Welcome back, {user?.name}
             </motion.h1>
             <motion.p
-              className="text-sm text-blue-200 mt-1"
+              className="text-sm text-slate-300 mt-1"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4 }}
@@ -396,7 +396,7 @@ Thank you for choosing the Cooperative!
           </div>
 
           <motion.div
-            className="relative z-10 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/20 text-sm w-full sm:w-auto"
+            className="relative z-10 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 text-sm w-full sm:w-auto"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 }}
@@ -405,7 +405,7 @@ Thank you for choosing the Cooperative!
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-xl">📞</div>
               <div>
-                <div className="text-blue-100 font-medium text-xs">24/7 Cooperative Support</div>
+                <div className="text-slate-200 font-medium text-xs">24/7 Cooperative Support</div>
                 <strong className="text-white text-lg tracking-wide">1800-266-7737</strong>
               </div>
             </div>
@@ -416,7 +416,7 @@ Thank you for choosing the Cooperative!
         <AnimatePresence>
           {error && (
             <motion.div
-              className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between"
+              className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
@@ -434,27 +434,27 @@ Thank you for choosing the Cooperative!
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="sticky top-20 z-40 bg-white/90 backdrop-blur-md border border-blue-200 shadow-lg rounded-2xl p-4 flex items-center justify-between"
+              className="sticky top-20 z-40 bg-white/90 backdrop-blur-md border border-slate-200 shadow-lg rounded-2xl p-4 flex items-center justify-between"
             >
               <div className="flex items-center gap-3">
-                <div className="bg-blue-100 text-blue-700 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">
+                <div className="bg-slate-100 text-emerald-950 w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg">
                   {cart.length}
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900">Services in Cart</h3>
+                  <h3 className="font-bold text-emerald-950">Services in Cart</h3>
                   <p className="text-xs text-slate-500 font-medium">Ready for checkout</p>
                 </div>
               </div>
               <div className="flex gap-2">
                 <MotionButton
                   onClick={() => setCart([])}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-2xl transition"
                 >
                   Clear
                 </MotionButton>
                 <MotionButton
                   onClick={handleCheckout}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition shadow-md"
+                  className="px-6 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-2xl transition shadow-md"
                 >
                   Checkout Now
                 </MotionButton>
@@ -466,7 +466,7 @@ Thank you for choosing the Cooperative!
         {/* ── Snabbit-Style Trust Showcase: Experts Vetted for Quality ── */}
         <section className="mt-10 mb-12">
           <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-emerald-950 tracking-tighter">
               Experts Vetted for <span className="text-[#e91e63]">Quality</span>
             </h2>
             <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto font-medium">
@@ -482,7 +482,7 @@ Thank you for choosing the Cooperative!
               className="bg-[#fff5f7] border border-pink-100 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[300px] shadow-sm"
             >
               <div>
-                <h3 className="text-lg font-extrabold text-[#4a1525] mb-5 tracking-tight">Top Rated Experts</h3>
+                <h3 className="text-lg font-extrabold text-[#4a1525] mb-5 tracking-tighter">Top Rated Experts</h3>
               </div>
 
               {/* Staggered Worker Pill Cards */}
@@ -517,7 +517,7 @@ Thank you for choosing the Cooperative!
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-1.5">
-                        <h4 className="text-sm font-extrabold text-slate-900 truncate">Vishal Yadav</h4>
+                        <h4 className="text-sm font-extrabold text-emerald-950 truncate">Vishal Yadav</h4>
                       </div>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
@@ -549,7 +549,7 @@ Thank you for choosing the Cooperative!
               className="bg-[#fff5f7] border border-pink-100 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[300px] shadow-sm"
             >
               <div>
-                <h3 className="text-lg font-extrabold text-[#4a1525] mb-4 tracking-tight">Professionally Trained</h3>
+                <h3 className="text-lg font-extrabold text-[#4a1525] mb-4 tracking-tighter">Professionally Trained</h3>
               </div>
 
               {/* Central Training Certificate Card */}
@@ -563,33 +563,33 @@ Thank you for choosing the Cooperative!
                   </svg>
                 </div>
 
-                <h4 className="text-sm font-extrabold text-slate-900">Training Completed Successfully!</h4>
+                <h4 className="text-sm font-extrabold text-emerald-950">Training Completed Successfully!</h4>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5 mb-3.5">Standardized SOP & Safety Certified</p>
 
                 {/* 4 Skill Vignette Photos */}
                 <div className="grid grid-cols-4 gap-2 w-full">
-                  <div className="aspect-square rounded-xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Electrical Inspection">
+                  <div className="aspect-square rounded-2xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Electrical Inspection">
                     <img
                       src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=120&auto=format&fit=crop&q=80"
                       alt="Wiring"
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
                   </div>
-                  <div className="aspect-square rounded-xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Deep Sanitation">
+                  <div className="aspect-square rounded-2xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Deep Sanitation">
                     <img
                       src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=120&auto=format&fit=crop&q=80"
                       alt="Cleaning"
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
                   </div>
-                  <div className="aspect-square rounded-xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Appliance Servicing">
+                  <div className="aspect-square rounded-2xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Appliance Servicing">
                     <img
                       src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=120&auto=format&fit=crop&q=80"
                       alt="Appliance Repair"
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                     />
                   </div>
-                  <div className="aspect-square rounded-xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Quality Assurance">
+                  <div className="aspect-square rounded-2xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Quality Assurance">
                     <img
                       src="https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?w=120&auto=format&fit=crop&q=80"
                       alt="Safety Check"
@@ -612,7 +612,7 @@ Thank you for choosing the Cooperative!
               className="bg-[#fff5f7] border border-pink-100 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[300px] shadow-sm"
             >
               <div>
-                <h3 className="text-lg font-extrabold text-[#4a1525] mb-4 tracking-tight">Background verified</h3>
+                <h3 className="text-lg font-extrabold text-[#4a1525] mb-4 tracking-tighter">Background verified</h3>
               </div>
 
               {/* Verification Network Diagram */}
@@ -694,9 +694,9 @@ Thank you for choosing the Cooperative!
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <span className="bg-gradient-to-r from-emerald-100 to-amber-100 text-emerald-800 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Co-op Powered</span>
+                <span className="bg-gradient-to-r from-emerald-100 to-amber-100 text-slate-800 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Co-op Powered</span>
               </div>
-              <h2 className="text-2xl font-extrabold text-slate-900">Community Services Marketplace</h2>
+              <h2 className="text-2xl font-extrabold text-emerald-950">Community Services Marketplace</h2>
               <p className="text-sm text-slate-500 font-medium">Fair-wage workers • Transparent pricing • Cooperative owned</p>
             </div>
             
@@ -708,7 +708,7 @@ Thank you for choosing the Cooperative!
                   onClick={() => setActiveCategory(cat)}
                   className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all shadow-sm ${
                     activeCategory === cat 
-                      ? 'bg-slate-900 text-white' 
+                      ? 'bg-emerald-700 text-white' 
                       : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                   }`}
                 >
@@ -725,7 +725,7 @@ Thank you for choosing the Cooperative!
 
               // Just 3 rotating accent colors: emerald, indigo, amber
               const themes = [
-                { badge: 'bg-emerald-600', tag: 'text-emerald-600', priceBg: 'bg-emerald-50', priceBorder: 'border-emerald-100', priceText: 'text-emerald-800', priceVal: 'text-emerald-900', bar: 'bg-emerald-500', barBg: 'bg-emerald-200', hint: 'text-emerald-600', btn: 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200', dot: 'bg-emerald-500', imgOverlay: 'bg-emerald-900/80', imgOverlayText: 'text-emerald-100', fallbackBg: 'from-emerald-50 to-slate-100' },
+                { badge: 'bg-emerald-700', tag: 'text-emerald-600', priceBg: 'bg-emerald-50', priceBorder: 'border-emerald-100', priceText: 'text-slate-800', priceVal: 'text-emerald-900', bar: 'bg-emerald-500', barBg: 'bg-emerald-200', hint: 'text-emerald-600', btn: 'bg-emerald-700 hover:bg-emerald-800 shadow-emerald-200', dot: 'bg-emerald-500', imgOverlay: 'bg-emerald-900/80', imgOverlayText: 'text-emerald-100', fallbackBg: 'from-emerald-50 to-slate-100' },
                 { badge: 'bg-indigo-600', tag: 'text-indigo-600', priceBg: 'bg-indigo-50', priceBorder: 'border-indigo-100', priceText: 'text-indigo-800', priceVal: 'text-indigo-900', bar: 'bg-indigo-500', barBg: 'bg-indigo-200', hint: 'text-indigo-600', btn: 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200', dot: 'bg-indigo-500', imgOverlay: 'bg-indigo-900/80', imgOverlayText: 'text-indigo-100', fallbackBg: 'from-indigo-50 to-slate-100' },
                 { badge: 'bg-amber-500', tag: 'text-amber-600', priceBg: 'bg-amber-50', priceBorder: 'border-amber-100', priceText: 'text-amber-800', priceVal: 'text-amber-900', bar: 'bg-amber-500', barBg: 'bg-amber-200', hint: 'text-amber-600', btn: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200', dot: 'bg-amber-500', imgOverlay: 'bg-amber-900/80', imgOverlayText: 'text-amber-100', fallbackBg: 'from-amber-50 to-slate-100' },
               ]
@@ -738,7 +738,7 @@ Thank you for choosing the Cooperative!
                 className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-all flex flex-col group relative"
               >
                 {/* Fair Wage Badge */}
-                <div className={`absolute top-3 right-3 z-10 ${t.badge} text-white px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1`}>
+                <div className={`absolute top-3 right-3 z-10 ${t.badge} text-white px-2 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1`}>
                   <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                   Fair Wage
                 </div>
@@ -752,7 +752,7 @@ Thank you for choosing the Cooperative!
                       {svc.icon || '🛠️'}
                     </div>
                   )}
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[10px] font-bold text-slate-800 shadow-sm flex items-center gap-1">
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-2xl text-[10px] font-bold text-slate-800 shadow-sm flex items-center gap-1">
                     <span className="text-amber-500">★</span> {svc.rating.toFixed(1)} <span className="text-slate-400 font-normal">({svc.reviews_count})</span>
                   </div>
                   {/* Cooperative members badge */}
@@ -764,11 +764,11 @@ Thank you for choosing the Cooperative!
                 {/* Content */}
                 <div className="p-5 flex flex-col flex-1">
                   <span className={`text-[10px] font-bold ${t.tag} uppercase tracking-wider mb-1`}>{svc.category}</span>
-                  <h3 className="font-extrabold text-slate-900 text-lg leading-tight mb-2">{svc.name}</h3>
+                  <h3 className="font-extrabold text-emerald-950 text-lg leading-tight mb-2">{svc.name}</h3>
                   <p className="text-xs text-slate-500 line-clamp-2 mb-4 flex-1">{svc.description}</p>
                   
                   {/* Transparent Cooperative Pricing */}
-                  <div className={`${t.priceBg} border ${t.priceBorder} rounded-xl p-3 mb-4`}>
+                  <div className={`${t.priceBg} border ${t.priceBorder} rounded-2xl p-3 mb-4`}>
                     <div className="flex items-center justify-between mb-1.5">
                       <span className={`text-[10px] font-bold ${t.priceText} uppercase tracking-wider`}>Transparent Pricing</span>
                       <span className={`font-extrabold ${t.priceVal} text-lg`}>₹{svc.price}</span>
@@ -796,14 +796,14 @@ Thank you for choosing the Cooperative!
                     {cart.find(c => c.id === svc.id) ? (
                       <MotionButton
                         onClick={() => handleRemoveFromCart(svc.id)}
-                        className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 text-xs font-bold rounded-xl transition shadow-sm"
+                        className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 text-xs font-bold rounded-2xl transition shadow-sm"
                       >
                         Remove
                       </MotionButton>
                     ) : (
                       <MotionButton
                         onClick={() => handleAddToCart(svc)}
-                        className={`px-4 py-2.5 ${t.btn} text-white text-xs font-bold rounded-xl transition shadow-md flex items-center gap-1.5`}
+                        className={`px-4 py-2.5 ${t.btn} text-white text-xs font-bold rounded-2xl transition shadow-md flex items-center gap-1.5`}
                       >
                         <span>🤝</span> Book via Co-op
                       </MotionButton>
@@ -820,7 +820,7 @@ Thank you for choosing the Cooperative!
           <ScrollReveal>
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">My Service Requests</h2>
+                <h2 className="text-lg font-bold text-emerald-950">My Service Requests</h2>
                 <p className="text-xs text-slate-500">Track status and inspect assigned worker details</p>
               </div>
               <span className="text-xs text-slate-500 font-medium">{requests.length} Requests Total</span>
@@ -871,7 +871,7 @@ Thank you for choosing the Cooperative!
                     <div className="flex items-start justify-between">
                       <div>
                         <span className="text-[10px] font-mono font-bold text-slate-400">Request #{req.id}</span>
-                        <h3 className="text-base font-bold text-slate-900">{req.service_name}</h3>
+                        <h3 className="text-base font-bold text-emerald-950">{req.service_name}</h3>
                         <p className="text-xs text-slate-500">{req.service_category}</p>
                       </div>
                       <RequestStatusBadge status={req.status} bookingStatus={booking?.status} />
@@ -888,7 +888,7 @@ Thank you for choosing the Cooperative!
                     <AnimatePresence>
                       {logistics && (
                         <motion.div
-                          className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-xs space-y-3"
+                          className="bg-emerald-700 border border-slate-800 rounded-2xl p-4 text-xs space-y-3"
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                         >
@@ -898,7 +898,7 @@ Thank you for choosing the Cooperative!
                           </div>
                           
                           <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-slate-800 rounded-lg p-2.5">
+                            <div className="bg-slate-800 rounded-2xl p-2.5">
                               <p className="text-slate-400 mb-1">Appliance Health</p>
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 bg-slate-700 h-1.5 rounded-full overflow-hidden">
@@ -913,13 +913,13 @@ Thank you for choosing the Cooperative!
                             </div>
 
                             {logistics.logistics ? (
-                              <div className="bg-slate-800 rounded-lg p-2.5 border border-emerald-500/30">
+                              <div className="bg-slate-800 rounded-2xl p-2.5 border border-emerald-500/30">
                                 <p className="text-emerald-400 font-bold mb-0.5 flex items-center gap-1">✓ Part Pre-Reserved</p>
                                 <p className="text-white font-medium">{logistics.logistics.part_reserved}</p>
                                 <p className="text-[10px] text-slate-400 mt-1">at {logistics.logistics.shop_name} ({logistics.logistics.shop_location})</p>
                               </div>
                             ) : (
-                              <div className="bg-slate-800 rounded-lg p-2.5">
+                              <div className="bg-slate-800 rounded-2xl p-2.5">
                                 <p className="text-slate-400 mb-1">Logistics Status</p>
                                 <p className="text-white font-medium">No immediate reservation required.</p>
                               </div>
@@ -933,16 +933,16 @@ Thank you for choosing the Cooperative!
                     <AnimatePresence>
                       {booking && (
                         <motion.div
-                          className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs flex items-center justify-between"
+                          className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 text-xs flex items-center justify-between"
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
                         >
                           <div>
-                            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-800">Assigned Cooperative Member</p>
-                            <p className="font-bold text-slate-900">{booking.worker_name}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-800">Assigned Cooperative Member</p>
+                            <p className="font-bold text-emerald-950">{booking.worker_name}</p>
                           </div>
-                          <span className="text-[11px] font-bold text-emerald-800 bg-white px-2.5 py-1 rounded-lg border border-emerald-300">
+                          <span className="text-[11px] font-bold text-slate-800 bg-white px-2.5 py-1 rounded-2xl border border-emerald-300">
                             {booking.status === 'ASSIGNED' ? 'Assigned' : booking.status === 'ACCEPTED' ? 'Accepted' : booking.status === 'IN_PROGRESS' ? 'In Progress' : 'Completed'}
                           </span>
                         </motion.div>
@@ -950,7 +950,7 @@ Thank you for choosing the Cooperative!
                     </AnimatePresence>
 
                     {/* Details */}
-                    <div className="space-y-1.5 text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <div className="space-y-1.5 text-xs text-slate-700 bg-slate-50 p-3 rounded-2xl border border-slate-200">
                       <p className="flex items-center gap-2"><span className="text-slate-400">📍</span><strong>Location:</strong> {req.location}</p>
                       <p className="flex items-center gap-2"><span className="text-slate-400">📅</span><strong>Scheduled:</strong> {req.preferred_date} • {req.preferred_time}</p>
                       <p className="text-slate-600 italic pt-1">"{req.description}"</p>
@@ -961,7 +961,7 @@ Thank you for choosing the Cooperative!
                       <div className="flex items-center justify-between flex-wrap gap-2">
                         <MotionButton
                           onClick={() => setSelectedRequest(req)}
-                          className="text-xs font-bold text-blue-700 hover:underline"
+                          className="text-xs font-bold text-emerald-950 hover:underline"
                         >
                           View Request Details →
                         </MotionButton>
@@ -971,7 +971,7 @@ Thank you for choosing the Cooperative!
                         {req.status === 'PENDING' && (
                           <MotionButton
                             onClick={() => handleCancelRequest(req.id)}
-                            className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold rounded-lg transition"
+                            className="px-3 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold rounded-2xl transition"
                           >
                             Cancel Request
                           </MotionButton>
@@ -980,7 +980,7 @@ Thank you for choosing the Cooperative!
                         {booking && ['ASSIGNED', 'ACCEPTED', 'IN_PROGRESS'].includes(booking.status) && (
                           <MotionButton
                             onClick={() => setChatBooking(booking)}
-                            className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 text-xs font-bold rounded-lg transition flex items-center gap-1"
+                            className="px-3 py-1 bg-blue-50 hover:bg-slate-100 text-emerald-950 border border-slate-200 text-xs font-bold rounded-2xl transition flex items-center gap-1"
                           >
                             <span>💬</span> Message Worker
                           </MotionButton>
@@ -992,7 +992,7 @@ Thank you for choosing the Cooperative!
                               toast.success("Job marked as done by customer. Signal sent to arbitration system.");
                               // Real app would send API request here to finalize the booking status
                             }}
-                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white shadow shadow-emerald-500/20 text-xs font-bold rounded-lg transition flex items-center gap-1"
+                            className="px-3 py-1 bg-emerald-500 hover:bg-emerald-700 text-white shadow shadow-emerald-500/20 text-xs font-bold rounded-2xl transition flex items-center gap-1"
                           >
                             <span>✅</span> Confirm Job Done
                           </MotionButton>
@@ -1003,25 +1003,25 @@ Thank you for choosing the Cooperative!
                             {!paidBookings.includes(booking.id) && booking.amount > 0 && (
                               <MotionButton
                                 onClick={() => setPaymentBooking(booking)}
-                                className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-lg transition flex items-center gap-1 shadow-sm"
+                                className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-2xl transition flex items-center gap-1 shadow-sm"
                               >
                                 💳 Pay ₹${booking.amount}
                               </MotionButton>
                             )}
                             {paidBookings.includes(booking.id) && (
-                              <span className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-lg flex items-center gap-1">
+                              <span className="px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold rounded-2xl flex items-center gap-1">
                                 ✓ Paid
                               </span>
                             )}
                             <MotionButton
                               onClick={() => handleDownloadReceipt(booking, req)}
-                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold rounded-lg transition flex items-center gap-1"
+                              className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold rounded-2xl transition flex items-center gap-1"
                             >
                               🧾 Receipt
                             </MotionButton>
                             <MotionButton
                               onClick={() => handleRebook(req)}
-                              className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-lg transition flex items-center gap-1"
+                              className="px-2 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold rounded-2xl transition flex items-center gap-1"
                             >
                               🔄 Re-book
                             </MotionButton>
@@ -1036,7 +1036,7 @@ Thank you for choosing the Cooperative!
                             setRating(5)
                             setReviewText('')
                           }}
-                          className="w-full mt-2 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white text-xs font-bold rounded-xl transition shadow-sm"
+                          className="w-full mt-2 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white text-xs font-bold rounded-2xl transition shadow-sm"
                         >
                           Leave a Review ⭐
                         </MotionButton>
@@ -1044,7 +1044,7 @@ Thank you for choosing the Cooperative!
 
                       {booking?.customer_rating && (
                         <motion.div
-                          className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                          className="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                         >
@@ -1070,7 +1070,7 @@ Thank you for choosing the Cooperative!
         title="Checkout Services"
         subtitle="Schedule and confirm your selected services"
       >
-        <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-xl max-h-32 overflow-y-auto">
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-2xl max-h-32 overflow-y-auto">
           <p className="text-[10px] font-bold text-blue-800 uppercase tracking-wider mb-2">Order Summary</p>
           {cart.map(item => (
             <div key={item.id} className="flex items-center justify-between text-xs text-slate-700 mb-1">
@@ -1078,7 +1078,7 @@ Thank you for choosing the Cooperative!
               <span className="font-bold">₹{item.price}</span>
             </div>
           ))}
-          <div className="flex items-center justify-between text-xs font-bold text-slate-900 pt-2 mt-2 border-t border-blue-200">
+          <div className="flex items-center justify-between text-xs font-bold text-emerald-950 pt-2 mt-2 border-t border-slate-200">
             <span>Total estimated price:</span>
             <span>₹{cart.reduce((sum, item) => sum + item.price, 0)}</span>
           </div>
@@ -1086,7 +1086,7 @@ Thank you for choosing the Cooperative!
 
         {formError && (
           <motion.div
-            className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs mt-3"
+            className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs mt-3"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
           >
@@ -1103,7 +1103,7 @@ Thank you for choosing the Cooperative!
               rows={2} value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Any specific requests for the professionals..."
-              className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-2 focus:ring-blue-600 outline-none transition"
+              className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-2xl text-emerald-950 text-xs focus:ring-2 focus:ring-blue-600 outline-none transition"
             />
           </div>
           <LocationPicker
@@ -1116,12 +1116,12 @@ Thank you for choosing the Cooperative!
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Preferred Date <span className="text-rose-600">*</span></label>
               <input type="date" required value={preferredDate} onChange={(e) => setPreferredDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs outline-none" />
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-2xl text-emerald-950 text-xs outline-none" />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Preferred Time <span className="text-rose-600">*</span></label>
               <select value={preferredTime} onChange={(e) => setPreferredTime(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs outline-none">
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-2xl text-emerald-950 text-xs outline-none">
                 <option value="09:00">9:00 AM</option>
                 <option value="10:00">10:00 AM</option>
                 <option value="11:00">11:00 AM</option>
@@ -1134,11 +1134,11 @@ Thank you for choosing the Cooperative!
           </div>
           <div className="flex gap-3 pt-3 border-t border-slate-200">
             <MotionButton type="submit" disabled={submitting}
-              className="flex-1 py-2.5 px-4 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 text-xs transition disabled:opacity-50 shadow-sm">
+              className="flex-1 py-2.5 px-4 rounded-2xl font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 text-xs transition disabled:opacity-50 shadow-sm">
               {submitting ? 'Processing...' : 'Confirm Booking'}
             </MotionButton>
             <MotionButton type="button" onClick={() => setIsCheckoutModalOpen(false)}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-xl transition">
+              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-2xl transition">
               Cancel
             </MotionButton>
           </div>
@@ -1153,14 +1153,14 @@ Thank you for choosing the Cooperative!
               <span className="text-[10px] font-mono text-slate-400">Request #{selectedRequest.id}</span>
               <RequestStatusBadge status={selectedRequest.status} />
             </div>
-            <h2 className="text-xl font-bold text-slate-900">{selectedRequest.service_name}</h2>
+            <h2 className="text-xl font-bold text-emerald-950">{selectedRequest.service_name}</h2>
             <p className="text-xs text-slate-500 mb-4">{selectedRequest.service_category}</p>
 
-            <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-xs">
               <div><p className="text-slate-500 font-bold uppercase text-[10px]">Task Description</p><p className="text-slate-800 mt-1">{selectedRequest.description}</p></div>
               {selectedRequest.image_url && (
                 <div className="pt-2"><p className="text-slate-500 font-bold uppercase text-[10px] mb-1">Attached Photo</p>
-                  <img src={`http://localhost:8000${selectedRequest.image_url}`} alt="Attached issue" className="max-h-48 rounded-xl border border-slate-200 object-cover" />
+                  <img src={`http://localhost:8000${selectedRequest.image_url}`} alt="Attached issue" className="max-h-48 rounded-2xl border border-slate-200 object-cover" />
                 </div>
               )}
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200">
@@ -1171,7 +1171,7 @@ Thank you for choosing the Cooperative!
 
             {selectedRequest.status === 'PENDING' && (
               <MotionButton onClick={() => handleCancelRequest(selectedRequest.id)}
-                className="w-full mt-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold rounded-xl transition">
+                className="w-full mt-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold rounded-2xl transition">
                 Cancel Service Request
               </MotionButton>
             )}
@@ -1197,10 +1197,10 @@ Thank you for choosing the Cooperative!
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Write a Review (Optional)</label>
               <textarea rows={3} value={reviewText} onChange={(e) => setReviewText(e.target.value)} placeholder="Tell us what you liked..."
-                className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-xs focus:ring-2 focus:ring-blue-600 outline-none" />
+                className="w-full px-3.5 py-2 bg-white border border-slate-300 rounded-2xl text-emerald-950 text-xs focus:ring-2 focus:ring-blue-600 outline-none" />
             </div>
             <MotionButton type="submit" disabled={submitting}
-              className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white text-xs font-bold rounded-xl transition disabled:opacity-50 shadow-sm">
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white text-xs font-bold rounded-2xl transition disabled:opacity-50 shadow-sm">
               {submitting ? 'Submitting...' : 'Submit Review'}
             </MotionButton>
           </form>
@@ -1212,7 +1212,7 @@ Thank you for choosing the Cooperative!
         {chatBooking && (
           <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setChatBooking(null)} />
+            <div className="absolute inset-0 bg-emerald-700/60 backdrop-blur-sm" onClick={() => setChatBooking(null)} />
             <motion.div className="bg-slate-50 rounded-2xl border border-slate-200 shadow-2xl max-w-sm w-full flex flex-col overflow-hidden relative z-10"
               style={{ height: '500px' }}
               initial={{ opacity: 0, scale: 0.9, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1236,7 +1236,7 @@ Thank you for choosing the Cooperative!
                 {chatMessages.map((msg, i) => (
                   <motion.div key={msg.id} className={`flex flex-col ${msg.sender === 'customer' ? 'items-end' : 'items-start'}`}
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                    <div className={`px-3 py-2 rounded-2xl max-w-[80%] text-xs shadow-sm ${msg.sender === 'customer' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'}`}>
+                    <div className={`px-3 py-2 rounded-2xl max-w-[80%] text-xs shadow-sm ${msg.sender === 'customer' ? 'bg-emerald-700 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-800 rounded-tl-none'}`}>
                       {msg.text}
                     </div>
                     <span className="text-[9px] text-slate-400 mt-1 mx-1">{msg.time}</span>
@@ -1248,7 +1248,7 @@ Thank you for choosing the Cooperative!
                   <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..."
                     className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-full text-xs outline-none focus:border-blue-500 focus:bg-white transition" />
                   <MotionButton type="submit" disabled={!newMessage.trim()} variant="icon"
-                    className="w-8 h-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center transition disabled:opacity-50">
+                    className="w-8 h-8 rounded-full bg-emerald-700 hover:bg-emerald-800 text-white flex items-center justify-center transition disabled:opacity-50">
                     <span className="text-xs">➤</span>
                   </MotionButton>
                 </form>
@@ -1265,25 +1265,25 @@ Thank you for choosing the Cooperative!
             <div className="text-center">
               <motion.div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3"
                 initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 400, damping: 20 }}>💳</motion.div>
-              <h2 className="text-xl font-bold text-slate-900">Secure Payment</h2>
+              <h2 className="text-xl font-bold text-emerald-950">Secure Payment</h2>
               <p className="text-xs text-slate-500 mt-1">Complete your payment for Booking #{paymentBooking.id}</p>
             </div>
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center mt-4">
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center mt-4">
               <span className="text-xs font-bold text-slate-500 uppercase">Amount Due</span>
-              <div className="text-3xl font-extrabold text-slate-900 mt-1">₹{paymentBooking.amount}</div>
+              <div className="text-3xl font-extrabold text-emerald-950 mt-1">₹{paymentBooking.amount}</div>
             </div>
             <form onSubmit={handleProcessPayment} className="space-y-4 mt-4">
               <div><label className="block text-xs font-bold text-slate-700 mb-1">Card Number</label>
                 <input type="text" required defaultValue="4242 4242 4242 4242"
-                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                  className="w-full px-3 py-2 bg-white border border-slate-300 rounded-2xl text-emerald-950 text-sm font-mono focus:ring-2 focus:ring-slate-900 outline-none" /></div>
               <div className="flex gap-3">
                 <div className="flex-1"><label className="block text-xs font-bold text-slate-700 mb-1">MM/YY</label>
-                  <input type="text" required defaultValue="12/28" className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                  <input type="text" required defaultValue="12/28" className="w-full px-3 py-2 bg-white border border-slate-300 rounded-2xl text-emerald-950 text-sm font-mono focus:ring-2 focus:ring-slate-900 outline-none" /></div>
                 <div className="flex-1"><label className="block text-xs font-bold text-slate-700 mb-1">CVC</label>
-                  <input type="text" required defaultValue="123" className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-slate-900 text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                  <input type="text" required defaultValue="123" className="w-full px-3 py-2 bg-white border border-slate-300 rounded-2xl text-emerald-950 text-sm font-mono focus:ring-2 focus:ring-slate-900 outline-none" /></div>
               </div>
               <MotionButton type="submit" disabled={processingPayment}
-                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition shadow-md disabled:opacity-70">
+                className="w-full py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-bold rounded-2xl flex items-center justify-center gap-2 transition shadow-md disabled:opacity-70">
                 {processingPayment ? (
                   <><motion.div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full" animate={{ rotate: 360 }}
                     transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} />Processing...</>
@@ -1305,18 +1305,18 @@ Thank you for choosing the Cooperative!
               initial={{ opacity: 0, y: 20, scale: 0.9 }} animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.9 }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}>
-              <div className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white p-4 flex items-center justify-between">
+              <div className="bg-emerald-700 text-white p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <motion.div className="text-2xl" animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity }}>🤖</motion.div>
-                  <div><div className="font-bold text-sm leading-tight">Sahakar Sathi AI</div><div className="text-[10px] text-blue-200">Smart Booking Assistant</div></div>
+                  <div><div className="font-bold text-sm leading-tight">Sahakar Sathi AI</div><div className="text-[10px] text-slate-300">Smart Booking Assistant</div></div>
                 </div>
-                <MotionButton variant="icon" onClick={() => setAiChatOpen(false)} className="text-blue-200 hover:text-white">✕</MotionButton>
+                <MotionButton variant="icon" onClick={() => setAiChatOpen(false)} className="text-slate-300 hover:text-white">✕</MotionButton>
               </div>
               <div className="h-[300px] overflow-y-auto p-4 space-y-4 bg-slate-50">
                 {aiMessages.map((msg, i) => (
                   <motion.div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                     initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
-                    <div className={`max-w-[85%] p-3 rounded-2xl text-xs shadow-sm ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'}`}>
+                    <div className={`max-w-[85%] p-3 rounded-2xl text-xs shadow-sm ${msg.role === 'user' ? 'bg-emerald-700 text-white rounded-tr-none' : 'bg-white text-slate-800 border border-slate-200 rounded-tl-none'}`}>
                       {msg.text}
                     </div>
                   </motion.div>
@@ -1334,9 +1334,9 @@ Thank you for choosing the Cooperative!
               <div className="p-3 bg-white border-t border-slate-200">
                 <form onSubmit={handleSendAiMessage} className="flex gap-2">
                   <input type="text" value={aiChatInput} onChange={(e) => setAiChatInput(e.target.value)} placeholder="Describe your problem..."
-                    className="flex-1 px-3 py-2 bg-slate-100 border border-transparent focus:border-blue-300 focus:bg-white rounded-full text-xs outline-none transition" disabled={isAiTyping} />
+                    className="flex-1 px-3 py-2 bg-slate-100 border border-transparent focus:border-slate-300 focus:bg-white rounded-full text-xs outline-none transition" disabled={isAiTyping} />
                   <MotionButton type="submit" variant="icon" disabled={!aiChatInput.trim() || isAiTyping}
-                    className="w-8 h-8 bg-blue-600 hover:bg-blue-700 text-white rounded-full flex items-center justify-center disabled:opacity-50 transition">
+                    className="w-8 h-8 bg-emerald-700 hover:bg-emerald-800 text-white rounded-full flex items-center justify-center disabled:opacity-50 transition">
                     <span className="text-xs">➤</span>
                   </MotionButton>
                 </form>
@@ -1347,14 +1347,14 @@ Thank you for choosing the Cooperative!
 
         <motion.button
           onClick={() => setAiChatOpen(!aiChatOpen)}
-          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition group ${aiChatOpen ? 'bg-slate-800 text-white' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'}`}
+          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-2xl transition group ${aiChatOpen ? 'bg-slate-800 text-white' : 'bg-gradient-to-r from-slate-800 to-slate-900 text-white'}`}
           whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
           animate={!aiChatOpen ? { y: [0, -5, 0] } : {}}
           transition={!aiChatOpen ? { duration: 2, repeat: Infinity, ease: 'easeInOut' } : {}}
         >
           <span className="text-2xl">{aiChatOpen ? '✕' : '🤖'}</span>
           {!aiChatOpen && (
-            <div className="absolute right-full mr-4 bg-slate-900 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap">
+            <div className="absolute right-full mr-4 bg-emerald-700 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition pointer-events-none whitespace-nowrap">
               Ask AI Assistant
             </div>
           )}
@@ -1371,8 +1371,8 @@ Thank you for choosing the Cooperative!
 function RequestStatusBadge({ status, bookingStatus }) {
   const displayStatus = bookingStatus || status
   const configs = {
-    ASSIGNED: { cls: 'bg-blue-100 text-blue-800 border-blue-300', label: '📌 Assigned' },
-    ACCEPTED: { cls: 'bg-emerald-100 text-emerald-800 border-emerald-300', label: '✓ Accepted' },
+    ASSIGNED: { cls: 'bg-slate-100 text-blue-800 border-slate-300', label: '📌 Assigned' },
+    ACCEPTED: { cls: 'bg-emerald-100 text-slate-800 border-emerald-300', label: '✓ Accepted' },
     IN_PROGRESS: { cls: 'bg-indigo-100 text-indigo-800 border-indigo-300', label: '⚙ In Progress' },
     COMPLETED: { cls: 'bg-emerald-100 text-emerald-900 border-emerald-400', label: '✓ Completed' },
     CANCELLED: { cls: 'bg-slate-100 text-slate-700 border-slate-300', label: '✕ Cancelled' },
