@@ -53,6 +53,12 @@ WEIGHT_FATIGUE_CAPACITY  = 0.20
 # ── Cooperative Weekly Target Income (configurable) ──────────────────────────
 COOPERATIVE_WEEKLY_TARGET = 5000.0  # ₹5000 per worker per week target
 
+# ── Fatigue Capacity Constants ───────────────────────────────────────────────
+FATIGUE_SAFE_LOAD = 18.0
+FATIGUE_DECAY = 0.8
+FATIGUE_WINDOW_DAYS = 7
+STATUS_MULTIPLIER_ACTIVE = 0.5
+
 
 def _get_worker_recent_bookings(db: Session, worker_id: int, limit: int = 20) -> List[Booking]:
     """Fetch the most recent bookings for a worker (completed + in-progress)."""
@@ -264,7 +270,7 @@ def calculate_fatigue_capacity(db: Session, worker: Worker) -> float:
                 delta = now - booking_time
             days_ago = delta.total_seconds() / (24 * 3600)
             
-        if days_ago > 7:
+        if days_ago > FATIGUE_WINDOW_DAYS:
             continue
 
         req = db.query(ServiceRequest).filter(ServiceRequest.id == booking.request_id).first()
@@ -279,16 +285,15 @@ def calculate_fatigue_capacity(db: Session, worker: Worker) -> float:
 
         status_multiplier = 1.0
         if booking.status in (BookingStatus.IN_PROGRESS, BookingStatus.ACCEPTED):
-            status_multiplier = 0.5  # Upcoming jobs contribute partial fatigue
+            status_multiplier = STATUS_MULTIPLIER_ACTIVE  # Upcoming jobs contribute partial fatigue
             days_ago = 0 # Currently happening
         elif booking.status != BookingStatus.COMPLETED:
             continue
 
-        job_load = intensity * hours * (0.8 ** max(0, days_ago)) * status_multiplier
+        job_load = intensity * hours * (FATIGUE_DECAY ** max(0, days_ago)) * status_multiplier
         load += job_load
 
-    # Assuming a safe_load of around 15-20 (e.g. 5 days of 4 hours at 0.8 intensity = 16)
-    safe_load = 18.0
+    safe_load = FATIGUE_SAFE_LOAD
     fatigue_index = min(100.0, (load / safe_load) * 100.0)
     capacity_score = max(0.0, 100.0 - fatigue_index)
 

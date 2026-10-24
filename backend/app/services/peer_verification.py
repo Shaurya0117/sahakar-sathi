@@ -16,6 +16,11 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.worker import Worker, VerificationStatus
 
+# ── Peer Consensus Threshold Constants ───────────────────────────────────────
+MIN_VOTERS = 3
+MIN_WEIGHT = 3.0
+MIN_SCORE = 75.0
+
 
 def get_voter_weight(voter: Worker) -> float:
     """
@@ -149,10 +154,10 @@ def calculate_consensus(candidate: Worker, votes: List[Dict] = None) -> Dict:
     score = (positive_weight / total_weight) * 100.0 if total_weight > 0 else 0.0
     
     # Thresholds for automatic verification:
-    # 1. Must have at least 3 distinct voters
-    # 2. Must have at least 3.0 total weight worth of votes
-    # 3. Score must be >= 75%
-    is_verified = len(votes) >= 3 and total_weight >= 3.0 and score >= 75.0
+    # 1. Must have at least MIN_VOTERS distinct voters
+    # 2. Must have at least MIN_WEIGHT total weight worth of votes
+    # 3. Score must be >= MIN_SCORE %
+    is_verified = len(votes) >= MIN_VOTERS and total_weight >= MIN_WEIGHT and score >= MIN_SCORE
     
     return {
         "is_verified": is_verified,
