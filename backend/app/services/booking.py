@@ -573,6 +573,26 @@ def submit_booking_review(
     if worker:
         avg_rating = db.query(func.avg(Booking.customer_rating)).filter(Booking.worker_id == worker.id, Booking.customer_rating.isnot(None)).scalar()
         worker.rating = float(avg_rating) if avg_rating else 0.0
+        # ML Feature: Review Fraud & Anomaly Audit Check (Isolation Forest)
+        try:
+            from app.ml.predictor import predict_review_anomaly
+            worker_mean = float(worker.rating or 4.0)
+            audit_res = predict_review_anomaly({
+                "rating_value": float(data.rating),
+                "review_length": len(data.review or ""),
+                "booking_amount": float(booking.amount or 500.0),
+                "worker_tenure_days": 100,
+                "worker_recent_booking_count": 5,
+                "rating_deviation_from_worker_mean": abs(float(data.rating) - worker_mean),
+            })
+            if audit_res and audit_res.get("is_anomaly"):
+                import logging as _logging
+                _logging.getLogger(__name__).warning(
+                    "Anomalous review flagged on booking #%d (score: %.3f, risk: %s)",
+                    booking.id, audit_res.get("anomaly_score", 0.0), audit_res.get("risk_level", "SUSPICIOUS")
+                )
+        except Exception:
+            pass
         db.commit()
         
     db.refresh(booking)

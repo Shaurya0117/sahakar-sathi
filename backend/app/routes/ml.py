@@ -22,8 +22,10 @@ from app.ml.predictor import (
     is_acceptance_model_ready,
     is_duration_model_ready,
     is_churn_model_ready,
+    is_review_fraud_model_ready,
     predict_churn,
     predict_hours,
+    predict_review_anomaly,
 )
 
 ml_router = APIRouter(prefix="/ml", tags=["Machine Learning"])
@@ -59,6 +61,7 @@ def get_ml_status(
         "acceptance_model_ready": is_acceptance_model_ready(),
         "duration_model_ready": is_duration_model_ready(),
         "churn_model_ready": is_churn_model_ready(),
+        "review_fraud_model_ready": is_review_fraud_model_ready(),
         "bandit": get_bandit_stats(),
         "metrics": metrics_data,
     }
@@ -241,3 +244,86 @@ def reset_bandit(
     reset_state()
     _save_state()
     return {"status": "ok", "message": "Bandit state has been reset."}
+
+
+@ml_router.get(
+    "/review-audit/{booking_id}",
+    summary="Audit a booking review for anomalies / fraud using Isolation Forest (ADMIN only)",
+)
+def audit_booking_review(
+    booking_id: int,
+    admin_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> Dict[str, Any]:
+    """
+    Examines customer rating and review patterns against the worker's historical
+    baseline to detect collusion, sudden rating bursts, or competitor review bombing.
+    """
+    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    if not booking:
+        raise HTTPException(status_code=404, detail="Booking not found.")
+
+    if booking.customer_rating is None:
+        return {
+            "booking_id": booking_id,
+            "reviewed": False,
+            "message": "Booking has not been reviewed yet.",
+        }
+
+    worker = db.query(Worker).filter(Worker.id == booking.worker_id).first()
+    now = datetime.datetime.utcnow()
+
+    # Tenure
+    if worker and worker.created_at:
+        w_created = worker.created_at.replace(tzinfo=None) if worker.created_at.tzinfo else worker.created_at
+        tenure = max(1, (now - w_created).days)
+    else:
+        tenure = 100
+
+    # Recent bookings count (last 14 days)
+    fourteen_days_ago = now - datetime.timedelta(days=14)
+    recent_cnt = db.query(Booking).filter(
+        Booking.worker_id == booking.worker_id,
+        Booking.created_at >= fourteen_days_ago
+    ).count()
+
+    # Worker baseline rating
+    worker_mean_rating = float(worker.rating or 4.0) if worker else 4.0
+    rating_dev = float(abs(booking.customer_rating - worker_mean_rating))
+
+    features = {
+        "rating_value": float(booking.customer_rating),
+        "review_length": len(booking.customer_review or ""),
+        "booking_amount": float(booking.amount or 500.0),
+        "worker_tenure_days": tenure,
+        "worker_recent_booking_count": recent_cnt,
+        "rating_deviation_from_worker_mean": rating_dev,
+    }
+
+    audit_result = predict_review_anomaly(features)
+    return {
+        "booking_id": booking_id,
+        "worker_id": booking.worker_id,
+        "rating": booking.customer_rating,
+        "review_text": booking.customer_review,
+        "features_used": features,
+        "audit": audit_result,
+        "model_ready": is_review_fraud_model_ready(),
+    }
+
+
+@ml_router.post(
+    "/review-audit",
+    summary="Arbitrary feature review audit testing (ADMIN only)",
+)
+def audit_arbitrary_review(
+    payload: Dict[str, Any],
+    admin_user: User = Depends(require_admin),
+) -> Dict[str, Any]:
+    """Test Isolation Forest review fraud inference on custom feature dictionaries."""
+    res = predict_review_anomaly(payload)
+    return {
+        "payload": payload,
+        "audit": res,
+        "model_ready": is_review_fraud_model_ready(),
+    }

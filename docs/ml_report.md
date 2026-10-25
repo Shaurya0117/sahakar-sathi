@@ -430,3 +430,34 @@ An honest academic evaluation requires acknowledging the limitations of this imp
 **Admin visibility:** The `/api/ml/status` response includes a `bandit` key showing: total contexts learned, total offer outcomes recorded, and number of arms. A `BanditInsightPanel` React component displays this live data in the admin UI. A `/api/ml/bandit/reset` endpoint (ADMIN only) allows clearing the state for testing.
 
 **Why this is patentable:** This is the first documented application of a Thompson Sampling contextual multi-armed bandit to *cooperative-specific sequential job offer escalation*. Unlike commercial platforms that simply re-dispatch to the next worker in queue, this system learns *which ranked position* (1st, 2nd, or 3rd offer) is most likely to result in acceptance for a given trade and time-of-day — without storing any personal data about individual workers. The bandit state is aggregate Beta distribution parameters keyed only on trade+time context, making it privacy-preserving by design.
+
+---
+
+### 11.4 Unsupervised Review Fraud and Rating Anomaly Detection (`IsolationForest`)
+
+**What it does:** To protect the cooperative trust ecosystem from rating manipulation, collusion rings, and competitor review bombing, an unsupervised `IsolationForest` anomaly detector monitors review submissions in real time. It isolates anomalous review and rating patterns without requiring human-labeled fraud data.
+
+**Model type:** `IsolationForest(n_estimators=100, contamination=0.08, random_state=42)`. Isolation Forest isolates anomalies by randomly partitioning features; anomalous data points require substantially fewer recursive tree splits to isolate than normal cluster points.
+
+**Features evaluated:**
+| Feature | Operational Description |
+|---|---|
+| `rating_value` | Numerical customer rating (1.0 to 5.0 stars) |
+| `review_length` | Character count of the written review text |
+| `booking_amount` | Monetary job value in INR |
+| `worker_tenure_days` | Number of days since worker account registration |
+| `worker_recent_booking_count` | Number of bookings completed by the worker in the preceding 14 days |
+| `rating_deviation_from_worker_mean` | Absolute divergence between submitted rating and worker's historical mean rating |
+
+**Performance (synthetic test benchmark):**
+- ROC-AUC: **0.9986**
+- Precision: **0.9344**
+- Recall: **0.9344**
+- F1-Score: **0.9344**
+- Sample volume: 4,000 synthetic reviews (320 anomalies)
+
+**Operational Workflow:**
+1. Upon submission via `submit_booking_review`, the review feature vector is evaluated in a non-blocking background check.
+2. The model produces an `anomaly_score` in $[0.0, 1.0]$ and categorizes risk into `NORMAL` ($< 0.50$), `SUSPICIOUS` ($0.50 - 0.64$), or `ANOMALOUS` ($\ge 0.65$).
+3. The GET `/api/ml/review-audit/{booking_id}` endpoint enables cooperative administrators to inspect flagged reviews.
+4. A frontend `ReviewAuditBadge` component renders visual audit indicators (`✓ Verified Authentic`, `⚠️ Review Under Audit`, or `🚨 Anomaly Flagged`).

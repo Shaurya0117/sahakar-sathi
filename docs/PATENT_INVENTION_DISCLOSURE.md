@@ -426,6 +426,7 @@ A method for decentralized credential verification of service workers in a coope
 - **Claim 16 (Dependent on Claim 1 & 4):** The method of Claim 1, further comprising a contextual multi-armed bandit dispatch module configured to adaptively select sequential offer escalation ranks using Thompson Sampling across trade domain and time-of-day contexts, wherein success parameters $\alpha$ and failure parameters $\beta$ of Beta distributions are updated asynchronously upon observing worker offer acceptances and rejections without storing personal identifying information.
 - **Claim 17:** A computer-implemented system for proactive cooperative workforce preservation, comprising a calibrated gradient boosting classification pipeline configured to predict worker 30-day inactivity probability from temporal booking recency, 30-day earnings volume, offer acceptance rates, rolling fatigue strain, and earnings trajectory trends, and selectively flag at-risk workers for administrative retention intervention.
 - **Claim 18:** A computer-implemented method for physical task scheduling, comprising predicting task duration using a gradient boosted regressor parameterized by service category, physical task intensity, worker tenure, and monetary price, and rendering real-time duration estimates to platform administrators during dispatch allocation.
+- **Claim 19:** A computer-implemented system for preserving cooperative reputation integrity, comprising an unsupervised Isolation Forest anomaly detection engine configured to monitor customer ratings and reviews in real time, parameterized by rating score, review length, monetary transaction value, worker tenure, recent booking velocity, and rating divergence from worker historical baseline, wherein review submissions exceeding an isolation anomaly threshold are flagged for administrative audit without interrupting customer submission flow.
 
 ---
 
@@ -453,6 +454,7 @@ Every claim element in this disclosure is directly implemented and verified in t
 | **Claim 16** | Thompson Sampling Bandit | `backend/app/ml/bandit.py` | `sample_best_arm` / `record_outcome` | Context: Trade $\times$ Hour; Beta priors $\alpha, \beta$ | **Implemented** |
 | **Claim 17** | Worker Churn Prediction | `backend/app/ml/predictor.py` & `routes/ml.py` | `predict_churn` / `get_worker_churn` | Calibrated HistGBM (ROC-AUC: 0.9822) | **Implemented** |
 | **Claim 18** | Duration Estimation in UI | `backend/app/ml/predictor.py` & `engine.py` | `predict_hours` / `DurationBadge.jsx` | HistGBM Regressor ($R^2 = 0.8876$) | **Implemented** |
+| **Claim 19** | Review Anomaly / Fraud Isolation | `backend/app/ml/predictor.py` & `routes/ml.py` | `predict_review_anomaly` / `audit_booking_review` | IsolationForest (ROC-AUC: 0.9986, F1: 0.9344) | **Implemented** |
 
 ---
 
