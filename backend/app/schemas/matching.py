@@ -71,6 +71,7 @@ class WorkerRecommendation(BaseModel):
     trust_score: Optional[float] = None
     ml_accept_probability: Optional[float] = None
     ml_used: bool = False
+    estimated_hours: Optional[float] = None
 
 
 class RequestMatchingResponse(BaseModel):

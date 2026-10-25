@@ -1,5 +1,6 @@
 import React from 'react'
 import ScoreBreakdown from './ScoreBreakdown'
+import DurationBadge from './DurationBadge'
 
 export default function RecommendationCard({ rank, recommendation, onAllocate, allocating = false }) {
   const {
@@ -82,6 +83,13 @@ export default function RecommendationCard({ rank, recommendation, onAllocate, a
           <span>{total_jobs || 0} completed jobs</span>
         </div>
       </div>
+
+      {/* ML Duration Estimate Badge */}
+      {recommendation.estimated_hours && (
+        <div className="mb-3">
+          <DurationBadge estimatedHours={recommendation.estimated_hours} />
+        </div>
+      )}
 
       {/* Score Component Breakdown Progress Bars */}
       <div className="mb-4 bg-white p-3 rounded-lg border border-slate-200">

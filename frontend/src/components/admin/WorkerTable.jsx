@@ -34,7 +34,19 @@ export default function WorkerTable({ workers, onSelectWorker }) {
                 {/* Worker Name & Email */}
                 <td className="px-6 py-4">
                   <div>
-                    <p className="font-semibold text-slate-100">{worker.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-slate-100">{worker.name}</p>
+                      {worker.churn_risk === 'HIGH' && (
+                        <span style={{
+                          background: '#fff7ed', color: '#c2410c',
+                          border: '1px solid #fed7aa',
+                          padding: '1px 7px', borderRadius: '9999px',
+                          fontSize: '0.7rem', fontWeight: 700,
+                        }}>
+                          ⚠️ At Risk
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-slate-400">{worker.email}</p>
                   </div>
                 </td>

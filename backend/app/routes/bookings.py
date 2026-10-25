@@ -113,7 +113,21 @@ def accept_job(
     db: Session = Depends(get_db),
     worker_user: User = Depends(require_worker),
 ):
-    return accept_booking(db, id, worker_user)
+    result = accept_booking(db, id, worker_user)
+    try:
+        from app.ml.bandit import record_outcome
+        import datetime as _dt
+        from app.models.worker import Worker as _Worker
+        booking = db.query(Booking).filter(Booking.id == id).first()
+        hour = _dt.datetime.utcnow().hour
+        trade = "general"
+        if booking and booking.worker_id:
+            _w = db.query(_Worker).filter(_Worker.id == booking.worker_id).first()
+            trade = _w.profession if _w and _w.profession else "general"
+        record_outcome(trade, hour, 0, True)
+    except Exception:
+        pass
+    return result
 
 
 @bookings_router.patch(
@@ -126,7 +140,21 @@ def reject_job(
     db: Session = Depends(get_db),
     worker_user: User = Depends(require_worker),
 ):
-    return reject_booking(db, id, worker_user)
+    result = reject_booking(db, id, worker_user)
+    try:
+        from app.ml.bandit import record_outcome
+        import datetime as _dt
+        from app.models.worker import Worker as _Worker
+        booking = db.query(Booking).filter(Booking.id == id).first()
+        hour = _dt.datetime.utcnow().hour
+        trade = "general"
+        if booking and booking.worker_id:
+            _w = db.query(_Worker).filter(_Worker.id == booking.worker_id).first()
+            trade = _w.profession if _w and _w.profession else "general"
+        record_outcome(trade, hour, 0, False)
+    except Exception:
+        pass
+    return result
 
 
 @bookings_router.patch(

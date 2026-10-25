@@ -24,16 +24,18 @@ logger = logging.getLogger(__name__)
 ARTIFACTS_DIR = Path(__file__).resolve().parent / "artifacts"
 ACCEPTANCE_MODEL_PATH = ARTIFACTS_DIR / "acceptance.joblib"
 DURATION_MODEL_PATH = ARTIFACTS_DIR / "duration.joblib"
+CHURN_MODEL_PATH = ARTIFACTS_DIR / "churn.joblib"
 METRICS_PATH = ARTIFACTS_DIR / "metrics.json"
 
 _acceptance_model = None
 _duration_model = None
+_churn_model = None
 _load_attempted = False
 
 
 def load_models(force_reload: bool = False) -> None:
     """Lazy load models with fault tolerance."""
-    global _acceptance_model, _duration_model, _load_attempted
+    global _acceptance_model, _duration_model, _churn_model, _load_attempted
     if _load_attempted and not force_reload:
         return
 
@@ -43,6 +45,7 @@ def load_models(force_reload: bool = False) -> None:
         logger.debug("ML is disabled in configuration. Skipping model loading.")
         _acceptance_model = None
         _duration_model = None
+        _churn_model = None
         return
 
     try:
@@ -67,12 +70,24 @@ def load_models(force_reload: bool = False) -> None:
         logger.warning("Failed to load duration model: %s", exc)
         _duration_model = None
 
+    try:
+        if CHURN_MODEL_PATH.is_file():
+            _churn_model = joblib.load(CHURN_MODEL_PATH)
+            logger.info("Loaded churn classifier from %s", CHURN_MODEL_PATH)
+        else:
+            logger.warning("Churn model file not found at %s", CHURN_MODEL_PATH)
+            _churn_model = None
+    except Exception as exc:
+        logger.warning("Failed to load churn model: %s", exc)
+        _churn_model = None
+
 
 def clear_models() -> None:
     """Clear cached models (useful for testing fallback mechanisms)."""
-    global _acceptance_model, _duration_model, _load_attempted
+    global _acceptance_model, _duration_model, _churn_model, _load_attempted
     _acceptance_model = None
     _duration_model = None
+    _churn_model = None
     _load_attempted = False
 
 
@@ -84,6 +99,11 @@ def is_acceptance_model_ready() -> bool:
 def is_duration_model_ready() -> bool:
     load_models()
     return _duration_model is not None and getattr(settings, "ML_ENABLED", True)
+
+
+def is_churn_model_ready() -> bool:
+    load_models()
+    return _churn_model is not None and getattr(settings, "ML_ENABLED", True)
 
 
 def predict_accept(features_dict: Dict[str, Any]) -> Optional[float]:
@@ -215,4 +235,56 @@ def predict_hours(
         return round(predicted_hours, 2)
     except Exception as exc:
         logger.warning("predict_hours failed: %s", exc)
+        return None
+
+
+def predict_churn(features_dict: Dict[str, Any]) -> Optional[float]:
+    """
+    Predict probability that a worker will churn (become inactive) in the next 30 days.
+
+    Expected keys in features_dict:
+    - days_since_last_booking (0 to 90)
+    - bookings_last_30d (0 to 20)
+    - earnings_last_30d (0 to 15000)
+    - acceptance_rate (0.0 to 1.0)
+    - avg_fatigue_index (0.0 to 95.0)
+    - rating (1.0 to 5.0)
+    - experience_years (0 to 15)
+    - days_on_platform (1 to 1000)
+    - earnings_trend (-1.0 to 1.0)
+
+    Returns:
+        float probability in [0.0, 1.0] (P(churn)), or None on error or when ML is disabled.
+    """
+    if not is_churn_model_ready():
+        return None
+
+    try:
+        days_since = float(np.clip(float(features_dict.get("days_since_last_booking", 30.0)), 0.0, 90.0))
+        bookings_30d = float(np.clip(float(features_dict.get("bookings_last_30d", 2)), 0.0, 20.0))
+        earnings_30d = float(np.clip(float(features_dict.get("earnings_last_30d", 1500.0)), 0.0, 15000.0))
+        acc_rate = float(np.clip(float(features_dict.get("acceptance_rate", 0.5)), 0.0, 1.0))
+        fatigue = float(np.clip(float(features_dict.get("avg_fatigue_index", 0.0)), 0.0, 95.0))
+        rating = float(np.clip(float(features_dict.get("rating", 3.0)), 1.0, 5.0))
+        exp_years = float(np.clip(float(features_dict.get("experience_years", 0)), 0.0, 15.0))
+        days_on = float(np.clip(float(features_dict.get("days_on_platform", 100)), 1.0, 1000.0))
+        trend = float(np.clip(float(features_dict.get("earnings_trend", 0.0)), -1.0, 1.0))
+
+        row_df = pd.DataFrame([{
+            "days_since_last_booking": days_since,
+            "bookings_last_30d": bookings_30d,
+            "earnings_last_30d": earnings_30d,
+            "acceptance_rate": acc_rate,
+            "avg_fatigue_index": fatigue,
+            "rating": rating,
+            "experience_years": exp_years,
+            "days_on_platform": days_on,
+            "earnings_trend": trend,
+        }])
+
+        prob = float(_churn_model.predict_proba(row_df)[0, 1])
+        prob = max(0.0, min(1.0, prob))
+        return round(prob, 4)
+    except Exception as exc:
+        logger.warning("predict_churn failed: %s", exc)
         return None

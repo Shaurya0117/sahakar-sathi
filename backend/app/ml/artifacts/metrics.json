@@ -145,5 +145,12 @@
         "std": 0.002439832966020563
       }
     }
+  },
+  "churn": {
+    "roc_auc": 0.9822,
+    "f1": 0.9061,
+    "accuracy": 0.924,
+    "churn_rate_train": 0.3991,
+    "churn_rate_test": 0.3987
   }
 }

@@ -1,0 +1,38 @@
+{
+  "electrician_morning": {
+    "alpha": [
+      41.0,
+      1.0,
+      1.0
+    ],
+    "beta": [
+      7.0,
+      1.0,
+      1.0
+    ]
+  },
+  "plumber_afternoon": {
+    "alpha": [
+      4.0,
+      1.0,
+      1.0
+    ],
+    "beta": [
+      1.0,
+      1.0,
+      1.0
+    ]
+  },
+  "carpenter_morning": {
+    "alpha": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "beta": [
+      1.0,
+      4.0,
+      1.0
+    ]
+  }
+}

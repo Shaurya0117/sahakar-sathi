@@ -174,6 +174,22 @@ def get_matching_recommendations(
             except Exception:
                 ml_prob = None
 
+        # ML Feature: Duration Estimation
+        estimated_hours = None
+        if getattr(settings, "ML_ENABLED", True):
+            try:
+                from app.ml.predictor import predict_hours as _predict_hours
+                _j_intensity = _get_job_intensity(service_name, service_category)
+                _j_val = float(getattr(request, "final_price", None) or (service.base_price if service else None) or 500.0)
+                estimated_hours = _predict_hours(
+                    service_name,
+                    _j_intensity,
+                    worker.experience_years or 0,
+                    _j_val,
+                )
+            except Exception:
+                estimated_hours = None
+
         recommendations.append(
             WorkerRecommendation(
                 worker_id=worker.id,
@@ -190,6 +206,7 @@ def get_matching_recommendations(
                 trust_score=trust_score_val,
                 ml_accept_probability=ml_prob,
                 ml_used=False,
+                estimated_hours=estimated_hours,
             )
         )
 
