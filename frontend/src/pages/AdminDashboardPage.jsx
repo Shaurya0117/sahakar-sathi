@@ -8,6 +8,7 @@ import AnimatedPage from '../components/AnimatedPage'
 import Footer from '../components/Footer'
 import { PageSkeleton } from '../components/Skeleton'
 import MatchingModal from '../components/admin/MatchingModal'
+import AiDiagnosticsPanel from '../components/admin/AiDiagnosticsPanel'
 import PortalHeader from '../components/PortalHeader'
 import { useAuth } from '../context/AuthContext'
 import { getCooperativeBookings } from '../services/bookingService'
@@ -331,6 +332,9 @@ export default function AdminDashboardPage() {
           </div>
         </section>
 
+        {/* Constrained ML & Adaptive AI Diagnostics */}
+        <AiDiagnosticsPanel />
+
         {/* Analytics Section */}
         {analytics && (
           <section className="bg-white p-6 rounded-lg border border-slate-200 shadow-xs mt-6 space-y-6">
@@ -525,7 +529,14 @@ export default function AdminDashboardPage() {
                   {filteredWorkers.map((w) => (
                     <tr key={w.id} className="hover:bg-slate-50 transition">
                       <td className="p-3">
-                        <div className="font-bold text-slate-900">{w.name}</div>
+                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                          <span>{w.name}</span>
+                          {(w.churn_risk === 'HIGH' || (w.total_jobs === 0 && (w.experience_years || 0) >= 3)) && (
+                            <span className="bg-amber-100 text-amber-800 border border-amber-300 text-[9px] font-bold px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                              ⚠️ At Risk
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-slate-500">{w.email}</div>
                       </td>
                       <td className="p-3 font-semibold text-slate-800">{w.profession || 'General Worker'}</td>

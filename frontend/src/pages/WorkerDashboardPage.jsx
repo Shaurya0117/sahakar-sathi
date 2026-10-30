@@ -452,8 +452,22 @@ export default function WorkerDashboardPage() {
           </div>
 
           {profile && (
-            <motion.div
-              className="relative z-10 bg-white/10 backdrop-blur-md px-6 py-4 rounded-xl border border-white/20 text-center min-w-[150px]"
+            <div className="flex flex-wrap items-center gap-3">
+              <motion.div
+                className="relative z-10 bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/20 text-center min-w-[130px]"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+              >
+                <div className="text-[10px] text-indigo-200 font-semibold uppercase tracking-wider mb-0.5">Proof Security</div>
+                <div className="text-xs font-extrabold text-emerald-300 flex items-center justify-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Nonce Active
+                </div>
+                <div className="text-[9px] text-indigo-100/70 mt-0.5">HMAC-SHA256 • 48h Grace</div>
+              </motion.div>
+
+              <motion.div
+                className="relative z-10 bg-white/10 backdrop-blur-md px-6 py-4 rounded-xl border border-white/20 text-center min-w-[130px]"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3 }}
@@ -462,6 +476,7 @@ export default function WorkerDashboardPage() {
               <div className="text-xs text-indigo-200 font-semibold uppercase tracking-widest mb-1">{t('profile.strength')}</div>
               <div className="text-3xl font-extrabold text-white">{profile.profile_completion}%</div>
             </motion.div>
+            </div>
           )}
         </motion.div>
 

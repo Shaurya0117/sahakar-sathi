@@ -120,7 +120,7 @@ export default function Footer() {
       <div className="border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-[11px] text-slate-500">
-            © 2026 Labor Cooperative Society. All rights reserved.
+            © 2026 Labor Cooperative Society • Protected by Patent-Pending Bio-Economic & Cryptographic Technology (Invention Disclosure Filed with ABES IPR Cell)
           </p>
           <div className="flex items-center gap-4 text-[11px] text-slate-500">
             <span>Helpline: 1800-266-7737</span>

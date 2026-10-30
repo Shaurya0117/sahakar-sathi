@@ -50,9 +50,12 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="inline-block px-4 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm backdrop-blur-md"
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-emerald-300 shadow-sm backdrop-blur-md"
             >
-              <span className="text-slate-800 text-sm font-bold tracking-wide">🏆 Fair & Transparent Cooperative</span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-emerald-950 text-xs sm:text-sm font-bold tracking-wide">
+                🛡️ Patent-Pending Bio-Economic & Zero-Knowledge Verification
+              </span>
             </motion.div>
 
             <motion.h1
@@ -198,6 +201,88 @@ export default function LandingPage() {
                   </div>
                 </motion.div>
               </Link>
+            ))}
+          </motion.div>
+        </ScrollReveal>
+
+        {/* ── Core Technological Innovations (Patent Pillars) ──────── */}
+        <ScrollReveal direction="up" delay={0.05}>
+          <div className="flex flex-col items-center text-center mb-12">
+            <span className="text-emerald-700 font-bold tracking-widest uppercase text-xs mb-2">
+              Patent-Pending Architecture
+            </span>
+            <h2 className="text-4xl font-extrabold text-emerald-950 mb-4 tracking-tighter">
+              Why Sahakar Sathi Is Different
+            </h2>
+            <div className="w-24 h-1.5 bg-emerald-500 rounded-full mb-4"></div>
+            <p className="text-slate-600 max-w-2xl font-medium">
+              We replaced extractive gig algorithms with mathematically fair, bio-economic, and privacy-preserving systems.
+            </p>
+          </div>
+
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, margin: '-50px' }}
+          >
+            {[
+              {
+                icon: '🔒',
+                badge: 'Zero-Image Privacy',
+                title: '16×16 Perceptual aHash',
+                desc: 'Work is verified on-device. The photo is reduced to a 256-bit hash and wiped immediately. Zero private customer photos ever leave the phone.',
+                accent: 'border-sky-200 bg-sky-50/50 text-sky-900',
+                iconBg: 'bg-sky-100 text-sky-700'
+              },
+              {
+                icon: '⚖️',
+                badge: 'Bio-Economic Safety',
+                title: '80% Fatigue Ceiling',
+                desc: 'A 7-day non-linear decay formula (0.8^days) prevents worker burnout. Fatigued workers are strictly excluded before dispatch, protecting labor health.',
+                accent: 'border-emerald-200 bg-emerald-50/50 text-emerald-900',
+                iconBg: 'bg-emerald-100 text-emerald-700'
+              },
+              {
+                icon: '🎰',
+                badge: 'Self-Learning ML',
+                title: 'Thompson Sampling Bandit',
+                desc: 'An adaptive contextual bandit learns optimal sequential offer escalation per trade and time of day without storing any personal tracking data.',
+                accent: 'border-purple-200 bg-purple-50/50 text-purple-900',
+                iconBg: 'bg-purple-100 text-purple-700'
+              },
+              {
+                icon: '🎙️',
+                badge: 'Inclusive Voice NLP',
+                title: 'Bilingual Phonetic NLP',
+                desc: 'Hands-free voice confirmation supporting Hindi & English accents with a strict Negative-Priority rule to eliminate misheard dispatches in noisy field work.',
+                accent: 'border-amber-200 bg-amber-50/50 text-amber-900',
+                iconBg: 'bg-amber-100 text-amber-700'
+              }
+            ].map((innov, i) => (
+              <motion.div
+                key={i}
+                variants={fadeInUp}
+                whileHover={{ y: -6 }}
+                className={`p-6 rounded-3xl border ${innov.accent} bg-white shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col justify-between`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className={`w-12 h-12 rounded-2xl ${innov.iconBg} flex items-center justify-center text-2xl shadow-sm`}>
+                      {innov.icon}
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                      {innov.badge}
+                    </span>
+                  </div>
+                  <h3 className="font-extrabold text-slate-900 text-lg mb-2">{innov.title}</h3>
+                  <p className="text-slate-600 text-xs leading-relaxed">{innov.desc}</p>
+                </div>
+                <div className="pt-4 mt-4 border-t border-slate-100 text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                  <span>Patent Claim Element</span> <span>→</span>
+                </div>
+              </motion.div>
             ))}
           </motion.div>
         </ScrollReveal>
