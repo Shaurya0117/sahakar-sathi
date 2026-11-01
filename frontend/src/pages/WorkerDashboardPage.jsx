@@ -41,6 +41,7 @@ import toast from 'react-hot-toast'
 import WorkerVoiceAssistant from '../components/WorkerVoiceAssistant'
 import ProofOfWorkCapture from '../components/ProofOfWorkCapture'
 import api from '../services/api'
+import { PillTabBar, CircularProgress, JobTimelineCard, EmptyState, SectionHeader, StatRow } from '../components/MinimalUI'
 import { refreshNonce, getQueue, enqueueProof, flushQueue } from '../services/proofNonceService'
 
 const PRESET_SKILLS = [
@@ -104,6 +105,7 @@ export default function WorkerDashboardPage() {
 
   // Tabs state to declutter the dashboard
   const [activeTab, setActiveTab] = useState('home')
+  const [expandedJob, setExpandedJob] = useState(null)
 
   const fetchWorkerJobs = useCallback(async () => {
     setJobsLoading(true)
@@ -452,30 +454,14 @@ export default function WorkerDashboardPage() {
           </div>
 
           {profile && (
-            <div className="flex flex-wrap items-center gap-3">
-              <motion.div
-                className="relative z-10 bg-white/10 backdrop-blur-md px-4 py-3 rounded-xl border border-white/20 text-center min-w-[130px]"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-              >
-                <div className="text-[10px] text-indigo-200 font-semibold uppercase tracking-wider mb-0.5">Proof Security</div>
-                <div className="text-xs font-extrabold text-emerald-300 flex items-center justify-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Nonce Active
-                </div>
-                <div className="text-[9px] text-indigo-100/70 mt-0.5">HMAC-SHA256 • 48h Grace</div>
-              </motion.div>
-
-              <motion.div
-                className="relative z-10 bg-white/10 backdrop-blur-md px-6 py-4 rounded-xl border border-white/20 text-center min-w-[130px]"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.3 }}
-              whileHover={{ scale: 1.05 }}
-            >
-              <div className="text-xs text-indigo-200 font-semibold uppercase tracking-widest mb-1">{t('profile.strength')}</div>
-              <div className="text-3xl font-extrabold text-white">{profile.profile_completion}%</div>
-            </motion.div>
+            <div className="flex items-center gap-2 flex-wrap relative z-10">
+              <span className="flex items-center gap-1.5 bg-white/10 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                🔒 Nonce Active
+              </span>
+              <span className="bg-white/10 backdrop-blur-sm text-white text-xs font-semibold px-3 py-1.5 rounded-full border border-white/20">
+                {t('profile.strength')}: <strong className="text-emerald-300 ml-1">{profile.profile_completion}%</strong>
+              </span>
             </div>
           )}
         </motion.div>
@@ -609,58 +595,34 @@ export default function WorkerDashboardPage() {
         ) : (
           <motion.div className="space-y-6" variants={staggerContainer} initial="hidden" animate="visible">
             {/* Wallet Earnings Dashboard */}
-            <motion.div variants={fadeInUp}
-              className="bg-slate-900 p-6 rounded-2xl shadow-xl text-white flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
-              <motion.div className="absolute top-0 right-0 p-4 text-slate-800 opacity-20 text-6xl pointer-events-none"
-                animate={{ rotate: [0, 5, -5, 0] }} transition={{ duration: 6, repeat: Infinity }}>💰</motion.div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="bg-emerald-500/20 text-emerald-300 font-bold text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30 uppercase tracking-wider">Worker Wallet</span>
-                  <span className="text-xs text-slate-400">Available to withdraw</span>
-                </div>
-                <motion.h2 className="text-4xl font-extrabold text-white mt-1"
-                  initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, type: 'spring' }}>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Worker Wallet</p>
+                <p className="text-3xl font-extrabold text-slate-900">
                   ₹{jobs.filter(b => b.status === 'COMPLETED').reduce((sum, b) => sum + (b.amount || 0), 0).toFixed(2)}
-                </motion.h2>
+                </p>
+                <p className="text-xs text-slate-400 mt-0.5">Available balance from completed allocations</p>
               </div>
-              <div className="flex gap-4">
-                <motion.div className="bg-slate-800 p-3 rounded-xl min-w-[120px] border border-slate-700 text-center"
-                  whileHover={{ scale: 1.05 }}>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Jobs Completed</p>
-                  <p className="text-xl font-bold mt-1 text-emerald-400">{jobs.filter(b => b.status === 'COMPLETED').length}</p>
-                </motion.div>
-                <motion.div className="bg-slate-800 p-3 rounded-xl min-w-[120px] border border-slate-700 text-center"
-                  whileHover={{ scale: 1.05 }}>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">Expected Payout</p>
-                  <p className="text-xl font-bold mt-1 text-amber-400">
-                    ₹{jobs.filter(b => b.status === 'IN_PROGRESS' || b.status === 'ACCEPTED').reduce((sum, b) => sum + (b.amount || 0), 0).toFixed(2)}
-                  </p>
-                </motion.div>
-              </div>
-            </motion.div>
+              <StatRow stats={[
+                { icon: '✅', value: jobs.filter(b => b.status === 'COMPLETED').length, label: 'Completed' },
+                { icon: '🔧', value: jobs.filter(b => b.status === 'IN_PROGRESS').length, label: 'In Progress' },
+                { icon: '⏳', value: jobs.filter(b => b.status === 'ASSIGNED').length, label: 'Pending' },
+                { icon: '💰', value: `₹${jobs.filter(b => b.status === 'IN_PROGRESS' || b.status === 'ACCEPTED').reduce((sum,b)=>sum+(b.amount||0),0).toFixed(0)}`, label: 'Expected' },
+              ]} />
+            </div>
 
             {/* Tab Navigation */}
-            <div className="flex overflow-x-auto gap-2 pb-2 border-b border-slate-200 hide-scrollbar">
-              {[
-                { id: 'home', label: 'Overview', icon: '📊' },
-                { id: 'finance', label: 'Finance & Perks', icon: '💳' },
-                { id: 'community', label: 'Community', icon: '🤝' },
-                { id: 'profile', label: 'Profile & Identity', icon: '👤' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-t-xl transition-colors whitespace-nowrap ${
-                    activeTab === tab.id 
-                      ? 'bg-white text-blue-700 border-t border-l border-r border-slate-200' 
-                      : 'bg-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                  }`}
-                  style={activeTab === tab.id ? { marginBottom: '-1px' } : {}}
-                >
-                  <span>{tab.icon}</span>
-                  {tab.label}
-                </button>
-              ))}
+            <div className="flex justify-center py-2">
+              <PillTabBar
+                activeTab={activeTab}
+                onChange={setActiveTab}
+                tabs={[
+                  { id: 'home',      label: 'Overview',          icon: '🏠' },
+                  { id: 'finance',   label: 'Finance',           icon: '💳' },
+                  { id: 'community', label: 'Community',         icon: '🤝' },
+                  { id: 'profile',   label: 'Profile',           icon: '👤' },
+                ]}
+              />
             </div>
 
             {/* Tab Content: Profile Overview */}
@@ -713,30 +675,31 @@ export default function WorkerDashboardPage() {
             {/* Tab Content: Home / Overview */}
             {activeTab === 'home' && (
               <>
-                {/* Workload & Income Health Health Status */}
+                {/* Workload & Income Health Status */}
                 <motion.div variants={fadeInUp} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div>
-                      <h2 className="text-base font-bold text-slate-900">Workload & Income Health Health Status</h2>
+                      <h2 className="text-base font-bold text-slate-900">Workload & Income Health Status</h2>
                   <p className="text-[10px] text-slate-500">Cooperative algorithms monitor your fatigue and income parity to ensure fair, safe routing.</p>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-xs font-bold text-slate-700">Physical Fatigue Index</span>
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded ${(profile.fatigue_index || 0) >= 80 ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                      {Math.min(100, (profile.fatigue_index || 0)).toFixed(1)} / 100
-                    </span>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-center gap-5">
+                  <CircularProgress
+                    value={profile.fatigue_index || 0}
+                    max={100}
+                    size={72}
+                    label="Fatigue"
+                    sublabel={(profile.fatigue_index || 0) >= 80 ? "⚠️ Capped" : "✓ Safe"}
+                  />
+                  <div>
+                    <p className="text-xs font-bold text-slate-800">Physical Fatigue Index</p>
+                    <p className="text-[10px] text-slate-500 mt-1 leading-relaxed max-w-[200px]">
+                      {(profile.fatigue_index || 0) >= 80
+                        ? "Safety floor reached. Algorithm blocked new assignments to prevent burnout."
+                        : "Levels nominal. You're eligible for new job routing."}
+                    </p>
                   </div>
-                  <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
-                    <div className={`h-full ${(profile.fatigue_index || 0) >= 80 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(100, (profile.fatigue_index || 0))}%` }} />
-                  </div>
-                  <p className="text-[10px] text-slate-500 mt-2">
-                    {(profile.fatigue_index || 0) >= 80 
-                      ? "⚠️ Safety Floor Reached: Algorithm has temporarily blocked new assignments to prevent physical burnout. Weekly rest hours triggered."
-                      : "✓ Fatigue levels nominal. You are eligible for new job routing."}
-                  </p>
                 </div>
                 
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">

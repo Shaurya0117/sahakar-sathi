@@ -44,12 +44,13 @@ export default function RecommendationCard({ rank, recommendation, onAllocate, a
                 {verification_status}
               </span>
               {recommendation.ml_accept_probability != null && (
-                <span className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-semibold border border-purple-200" title="Machine Learning Acceptance Probability">
+                <span
+                  className="text-xs bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-semibold border border-purple-200"
+                  title="Machine Learning Acceptance Probability"
+                >
                   🎯 {Math.round(recommendation.ml_accept_probability * 100)}% accept chance
                 </span>
               )}
-                {verification_status}
-              </span>
             </div>
             <p className="text-xs text-slate-500">
               {profession || 'Service Worker'} • {location || 'Service Area'}
@@ -108,7 +109,9 @@ export default function RecommendationCard({ rank, recommendation, onAllocate, a
       <div className="mb-4">
         <h5 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
           <span>Why this worker is recommended:</span>
-          <span className="text-[10px] font-normal text-slate-500 italic">Recommended based on service skills, location, availability, experience and workload & income health fatigue metrics</span>
+          <span className="text-[10px] font-normal text-slate-500 italic">
+            Recommended based on service skills, location, availability, experience and workload &amp; income health fatigue metrics
+          </span>
         </h5>
         <ul className="space-y-1 text-xs text-slate-600">
           {reasons && reasons.length > 0 ? (

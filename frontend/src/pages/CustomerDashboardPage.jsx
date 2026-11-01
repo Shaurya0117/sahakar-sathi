@@ -27,6 +27,7 @@ import {
 } from '../services/requestService'
 import { submitReview, getCompletionCode } from '../services/bookingService'
 import ReviewAuditBadge from '../components/admin/ReviewAuditBadge'
+import { PillTabBar, EmptyState, SectionHeader, StatusPill } from '../components/MinimalUI'
 import toast from 'react-hot-toast'
 
 function CustomerCompletionCode({ bookingId }) {
@@ -86,6 +87,7 @@ export default function CustomerDashboardPage() {
   // Cart & Catalog state
   const [cart, setCart] = useState([])
   const [activeCategory, setActiveCategory] = useState('All')
+  const [activeTab, setActiveTab] = useState('services') // 'services' | 'requests'
 
   // Review Form fields
   const [rating, setRating] = useState(5)
@@ -385,7 +387,7 @@ Thank you for choosing the Cooperative!
   }
 
   return (
-    <AnimatedPage className="min-h-screen bg-slate-50 text-emerald-950 flex flex-col font-sans">
+    <AnimatedPage className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans">
       <PortalHeader />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-8 flex-1 w-full space-y-8">
@@ -501,253 +503,137 @@ Thank you for choosing the Cooperative!
           )}
         </AnimatePresence>
 
-        {/* ── Snabbit-Style Trust Showcase: Experts Vetted for Quality ── */}
-        <section className="mt-10 mb-12">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-extrabold text-emerald-950 tracking-tighter">
-              Experts Vetted for <span className="text-[#e91e63]">Quality</span>
+        {/* ── Main Tab Navigation ────────────────────────────────── */}
+        <div className="flex justify-center pt-2 pb-1">
+          <PillTabBar
+            activeTab={activeTab}
+            onChange={setActiveTab}
+            tabs={[
+              { id: 'services', label: 'Explore Services', icon: '🛍️' },
+              { id: 'requests', label: `My Requests (${requests.length})`, icon: '📋' },
+            ]}
+          />
+        </div>
+
+        {/* ── Services Tab View ────────────────────────────────── */}
+        {activeTab === 'services' && (
+          <>
+        {/* ── Trust Showcase: Experts Vetted for Quality ── */}
+        <section className="mt-6 mb-10">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+              Experts Vetted for <span className="text-emerald-700">Quality & Trust</span>
             </h2>
-            <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto font-medium">
-              Every cooperative worker undergoes strict background checks, certified hands-on training, and maintains top peer ratings.
+            <p className="text-slate-500 text-xs md:text-sm mt-1 max-w-xl mx-auto font-medium">
+              Every cooperative professional undergoes police verification, hands-on training, and peer review.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Card 1: Top Rated Experts */}
-            <motion.div
-              whileHover={{ y: -4 }}
-              transition={{ duration: 0.2 }}
-              className="bg-[#fff5f7] border border-pink-100 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[300px] shadow-sm"
-            >
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-extrabold text-[#4a1525] mb-5 tracking-tighter">Top Rated Experts</h3>
-              </div>
-
-              {/* Staggered Worker Pill Cards */}
-              <div className="relative py-2 flex flex-col justify-center">
-                {/* Back card: Sweta Patil */}
-                <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-3 shadow-md border border-pink-100/80 flex items-center gap-3 w-52 ml-auto -mb-4 relative z-0 transform hover:scale-105 transition-transform">
-                  <img
-                    src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=120&auto=format&fit=crop&q=80"
-                    alt="Sweta Patil"
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-pink-100 shrink-0"
-                  />
-                  <div className="min-w-0">
-                    <h4 className="text-xs font-bold text-slate-800 truncate">Sweta Patil</h4>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full flex items-center gap-0.5">
-                        ★ 4.7
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Front card: Vishal Yadav */}
-                <div className="bg-white rounded-2xl p-4 shadow-xl border border-pink-100/90 w-64 relative z-10 transform hover:scale-105 transition-transform">
-                  <div className="flex items-center gap-3">
-                    <div className="relative shrink-0">
-                      <img
-                        src="https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=120&auto=format&fit=crop&q=80"
-                        alt="Vishal Yadav"
-                        className="w-12 h-12 rounded-full object-cover ring-2 ring-[#e91e63]/30"
-                      />
-                      <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white" title="Verified Active"></span>
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="text-sm font-extrabold text-emerald-950 truncate">Vishal Yadav</h4>
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                          ★ 4.9
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-medium">Electrician</span>
+                <h3 className="text-sm font-bold text-slate-900 mb-3">⭐ Top Rated Experts</h3>
+                <div className="space-y-2">
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">SP</div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">Sweta Patil</p>
+                        <p className="text-[10px] text-slate-500">Home Care Specialist</p>
                       </div>
                     </div>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">★ 4.7</span>
                   </div>
-
-                  {/* Profile credential preview bars */}
-                  <div className="mt-3.5 space-y-1.5">
-                    <div className="h-2 bg-slate-100 rounded-full w-full"></div>
-                    <div className="h-2 bg-slate-100 rounded-full w-3/4"></div>
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-xs font-bold">VY</div>
+                      <div>
+                        <p className="text-xs font-bold text-slate-900">Vishal Yadav</p>
+                        <p className="text-[10px] text-slate-500">Master Electrician</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">★ 4.9</span>
                   </div>
                 </div>
               </div>
-
-              <div className="pt-2 text-[11px] font-semibold text-pink-900/60 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#e91e63]"></span>
+              <p className="text-[10px] text-slate-400 mt-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 Top 1% rated cooperative service partners
-              </div>
-            </motion.div>
+              </p>
+            </div>
 
             {/* Card 2: Professionally Trained */}
-            <motion.div
-              whileHover={{ y: -4 }}
-              transition={{ duration: 0.2 }}
-              className="bg-[#fff5f7] border border-pink-100 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[300px] shadow-sm"
-            >
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-extrabold text-[#4a1525] mb-4 tracking-tighter">Professionally Trained</h3>
-              </div>
-
-              {/* Central Training Certificate Card */}
-              <div className="bg-white rounded-2xl p-4 shadow-lg border border-pink-100/90 flex flex-col items-center text-center my-auto">
-                {/* Rosette Ribbon Badge */}
-                <div className="w-14 h-14 relative flex items-center justify-center mb-2">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-[#e91e63] to-[#ff4081] rounded-2xl rotate-45 shadow-md"></div>
-                  <div className="absolute inset-0 bg-gradient-to-tr from-[#e91e63] to-[#ff4081] rounded-2xl shadow-md"></div>
-                  <svg className="w-7 h-7 text-white relative z-10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                </div>
-
-                <h4 className="text-sm font-extrabold text-emerald-950">Training Completed Successfully!</h4>
-                <p className="text-[11px] text-slate-400 font-medium mt-0.5 mb-3.5">Standardized SOP & Safety Certified</p>
-
-                {/* 4 Skill Vignette Photos */}
-                <div className="grid grid-cols-4 gap-2 w-full">
-                  <div className="aspect-square rounded-2xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Electrical Inspection">
-                    <img
-                      src="https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=120&auto=format&fit=crop&q=80"
-                      alt="Wiring"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
+                <h3 className="text-sm font-bold text-slate-900 mb-3">🎓 Certified Co-op Training</h3>
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">Skill Competency Matrix</span>
+                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">Verified</span>
                   </div>
-                  <div className="aspect-square rounded-2xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Deep Sanitation">
-                    <img
-                      src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=120&auto=format&fit=crop&q=80"
-                      alt="Cleaning"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="aspect-square rounded-2xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Appliance Servicing">
-                    <img
-                      src="https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=120&auto=format&fit=crop&q=80"
-                      alt="Appliance Repair"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="aspect-square rounded-2xl overflow-hidden border border-pink-200/60 shadow-sm group relative" title="Quality Assurance">
-                    <img
-                      src="https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?w=120&auto=format&fit=crop&q=80"
-                      alt="Safety Check"
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                    />
+                  <div className="grid grid-cols-2 gap-1.5 pt-1">
+                    {['Electrical Safety', 'Pipe Fitting', 'Carpentry', 'Sanitization'].map((skill) => (
+                      <div key={skill} className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] font-medium text-slate-700 flex items-center gap-1">
+                        <span className="text-emerald-600 font-bold">✓</span> {skill}
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
-
-              <div className="pt-2 text-[11px] font-semibold text-pink-900/60 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#e91e63]"></span>
+              <p className="text-[10px] text-slate-400 mt-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 Hands-on practical training & safety audit
-              </div>
-            </motion.div>
+              </p>
+            </div>
 
             {/* Card 3: Background verified */}
-            <motion.div
-              whileHover={{ y: -4 }}
-              transition={{ duration: 0.2 }}
-              className="bg-[#fff5f7] border border-pink-100 rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between min-h-[300px] shadow-sm"
-            >
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
               <div>
-                <h3 className="text-lg font-extrabold text-[#4a1525] mb-4 tracking-tighter">Background verified</h3>
-              </div>
-
-              {/* Verification Network Diagram */}
-              <div className="bg-white rounded-2xl p-4 shadow-lg border border-pink-100/90 flex items-center justify-between relative overflow-hidden my-auto">
-                {/* Left: 3 Screening Candidate Avatars */}
-                <div className="flex flex-col gap-2 relative z-10 shrink-0">
-                  <img
-                    src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80"
-                    alt="Applicant 1"
-                    className="w-8 h-8 rounded-full object-cover border-2 border-slate-200 filter grayscale"
-                    title="Aadhaar KYC Scan"
-                  />
-                  <img
-                    src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80"
-                    alt="Applicant 2"
-                    className="w-8 h-8 rounded-full object-cover border-2 border-slate-200 filter grayscale"
-                    title="Police Clearance Record"
-                  />
-                  <img
-                    src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80"
-                    alt="Applicant 3"
-                    className="w-8 h-8 rounded-full object-cover border-2 border-slate-200 filter grayscale"
-                    title="Residential Address Verification"
-                  />
-                </div>
-
-                {/* Connecting Lines SVG */}
-                <svg className="w-14 h-24 text-pink-200 stroke-current shrink-0" fill="none" viewBox="0 0 60 100">
-                  <path d="M 5 18 C 30 18, 30 50, 55 50" strokeWidth="2.5" strokeDasharray="3 3" />
-                  <path d="M 5 50 L 55 50" strokeWidth="2.5" strokeDasharray="3 3" />
-                  <path d="M 5 82 C 30 82, 30 50, 55 50" strokeWidth="2.5" strokeDasharray="3 3" />
-                </svg>
-
-                {/* Center: Sahakar Sathi VERIFIED Shield */}
-                <div className="relative z-10 flex flex-col items-center shrink-0">
-                  <div className="w-18 h-22 bg-gradient-to-b from-[#ff1361] to-[#c2185b] rounded-2xl shadow-xl flex flex-col items-center justify-center p-2 text-white border-2 border-white/90">
-                    <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center mb-1">
-                      <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </div>
-                    <span className="text-[9px] font-bold text-white leading-tight text-center">Sahakar Sathi</span>
-                    <span className="text-[8px] font-black tracking-wider uppercase text-pink-100">VERIFIED</span>
+                <h3 className="text-sm font-bold text-slate-900 mb-3">🛡️ Zero-Compromise Security</h3>
+                <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-600">Aadhaar e-KYC Verification</span>
+                    <span className="text-emerald-700 font-bold">100%</span>
                   </div>
-                </div>
-
-                {/* Connector Right */}
-                <svg className="w-8 h-8 text-pink-300 stroke-current shrink-0" fill="none" viewBox="0 0 30 30">
-                  <path d="M 2 15 L 28 15" strokeWidth="2.5" />
-                </svg>
-
-                {/* Right: Verified Expert Avatar with Check Badge */}
-                <div className="relative z-10 shrink-0">
-                  <div className="relative">
-                    <img
-                      src="https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=120&auto=format&fit=crop&q=80"
-                      alt="Verified Worker"
-                      className="w-11 h-11 rounded-full object-cover ring-2 ring-[#e91e63]"
-                    />
-                    <span className="absolute -bottom-1 -right-1 w-4 h-4 bg-[#e91e63] text-white rounded-full flex items-center justify-center shadow-md">
-                      <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </span>
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-emerald-600 h-full rounded-full w-full"></div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <span className="text-slate-600">Police Clearance Certificate</span>
+                    <span className="text-emerald-700 font-bold">Active</span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-emerald-600 h-full rounded-full w-full"></div>
                   </div>
                 </div>
               </div>
-
-              <div className="pt-2 text-[11px] font-semibold text-pink-900/60 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#e91e63]"></span>
+              <p className="text-[10px] text-slate-400 mt-3 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                 100% Aadhaar e-KYC & police clearance screened
-              </div>
-            </motion.div>
+              </p>
+            </div>
           </div>
         </section>
 
         {/* ── Service Catalog Marketplace ────────────────────────── */}
-        <section className="space-y-6 mt-8">
+        <section className="space-y-6 mt-6">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="bg-gradient-to-r from-emerald-100 to-amber-100 text-slate-800 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">Co-op Powered</span>
-              </div>
-              <h2 className="text-2xl font-extrabold text-emerald-950">Community Services Marketplace</h2>
-              <p className="text-sm text-slate-500 font-medium">Fair-wage workers • Transparent pricing • Cooperative owned</p>
+              <h2 className="text-xl font-bold text-slate-900">Community Services Marketplace</h2>
+              <p className="text-xs text-slate-500 mt-0.5">Fair-wage workers • Transparent pricing • Cooperative owned</p>
             </div>
             
             {/* Category Pills */}
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide max-w-full">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide max-w-full">
               {['All', ...new Set(services.map(s => s.category))].map(cat => (
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all shadow-sm ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
                     activeCategory === cat 
-                      ? 'bg-emerald-700 text-white' 
-                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                      ? 'bg-emerald-700 text-white shadow-xs' 
+                      : 'bg-white text-slate-600 border border-slate-200 hover:border-slate-300'
                   }`}
                 >
                   {cat}
@@ -756,105 +642,102 @@ Thank you for choosing the Cooperative!
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {(activeCategory === 'All' ? services : services.filter(s => s.category === activeCategory)).map((svc, idx) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+            {(activeCategory === 'All' ? services : services.filter(s => s.category === activeCategory)).map((svc) => {
               const workerShare = Math.round(svc.price * 0.82)
               const coopFund = svc.price - workerShare
-
-              // Just 3 rotating accent colors: emerald, indigo, amber
-              const themes = [
-                { badge: 'bg-emerald-700', tag: 'text-emerald-600', priceBg: 'bg-emerald-50', priceBorder: 'border-emerald-100', priceText: 'text-slate-800', priceVal: 'text-emerald-900', bar: 'bg-emerald-500', barBg: 'bg-emerald-200', hint: 'text-emerald-600', btn: 'bg-emerald-700 hover:bg-emerald-800 shadow-emerald-200', dot: 'bg-emerald-500', imgOverlay: 'bg-emerald-900/80', imgOverlayText: 'text-emerald-100', fallbackBg: 'from-emerald-50 to-slate-100' },
-                { badge: 'bg-indigo-600', tag: 'text-indigo-600', priceBg: 'bg-indigo-50', priceBorder: 'border-indigo-100', priceText: 'text-indigo-800', priceVal: 'text-indigo-900', bar: 'bg-indigo-500', barBg: 'bg-indigo-200', hint: 'text-indigo-600', btn: 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200', dot: 'bg-indigo-500', imgOverlay: 'bg-indigo-900/80', imgOverlayText: 'text-indigo-100', fallbackBg: 'from-indigo-50 to-slate-100' },
-                { badge: 'bg-amber-500', tag: 'text-amber-600', priceBg: 'bg-amber-50', priceBorder: 'border-amber-100', priceText: 'text-amber-800', priceVal: 'text-amber-900', bar: 'bg-amber-500', barBg: 'bg-amber-200', hint: 'text-amber-600', btn: 'bg-amber-500 hover:bg-amber-600 shadow-amber-200', dot: 'bg-amber-500', imgOverlay: 'bg-amber-900/80', imgOverlayText: 'text-amber-100', fallbackBg: 'from-amber-50 to-slate-100' },
-              ]
-              const t = themes[idx % 3]
+              const memberCount = ((svc.id * 3) % 7) + 4
 
               return (
-              <motion.div
+              <div
                 key={svc.id}
-                whileHover={{ y: -4 }}
-                className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-xl transition-all flex flex-col group relative"
+                className="bg-white rounded-2xl overflow-hidden border border-slate-200 shadow-xs hover:border-slate-300 hover:shadow-md transition-all flex flex-col group relative"
               >
                 {/* Fair Wage Badge */}
-                <div className={`absolute top-3 right-3 z-10 ${t.badge} text-white px-2 py-1 rounded-2xl text-[9px] font-black uppercase tracking-wider shadow-lg flex items-center gap-1`}>
-                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <div className="absolute top-3 right-3 z-10 bg-emerald-50 text-emerald-700 border border-emerald-200/80 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 shadow-xs">
+                  <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                   Fair Wage
                 </div>
 
                 {/* Image Header */}
-                <div className="h-40 bg-slate-100 relative overflow-hidden">
+                <div className="h-44 bg-slate-100 relative overflow-hidden">
                   {svc.image_url ? (
                     <img src={svc.image_url} alt={svc.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                   ) : (
-                    <div className={`w-full h-full flex items-center justify-center text-5xl bg-gradient-to-br ${t.fallbackBg}`}>
-                      {svc.icon || '🛠️'}
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100 text-slate-400 gap-1">
+                      <span className="text-4xl">{svc.icon || '🛠️'}</span>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{svc.category}</span>
                     </div>
                   )}
-                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-2xl text-[10px] font-bold text-slate-800 shadow-sm flex items-center gap-1">
-                    <span className="text-amber-500">★</span> {svc.rating.toFixed(1)} <span className="text-slate-400 font-normal">({svc.reviews_count})</span>
+                  <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2 py-0.5 rounded-full text-[10px] font-bold text-slate-800 shadow-xs border border-slate-200/60 flex items-center gap-1">
+                    <span className="text-amber-500">★</span> {svc.rating.toFixed(1)} <span className="text-slate-400 font-normal text-[9px]">({svc.reviews_count})</span>
                   </div>
                   {/* Cooperative members badge */}
-                  <div className={`absolute bottom-3 left-3 ${t.imgOverlay} backdrop-blur-sm px-2 py-1 rounded-md text-[9px] font-bold ${t.imgOverlayText} flex items-center gap-1`}>
-                    <span>👷</span> {Math.floor(Math.random() * 8) + 3} co-op members serve this
+                  <div className="absolute bottom-2.5 left-3 bg-slate-900/75 backdrop-blur-sm px-2 py-0.5 rounded-md text-[9px] font-medium text-white flex items-center gap-1">
+                    <span>👷</span> {memberCount} co-op members available
                   </div>
                 </div>
 
                 {/* Content */}
-                <div className="p-5 flex flex-col flex-1">
-                  <span className={`text-[10px] font-bold ${t.tag} uppercase tracking-wider mb-1`}>{svc.category}</span>
-                  <h3 className="font-extrabold text-emerald-950 text-lg leading-tight mb-2">{svc.name}</h3>
-                  <p className="text-xs text-slate-500 line-clamp-2 mb-4 flex-1">{svc.description}</p>
+                <div className="p-4 flex flex-col flex-1">
+                  <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-1">{svc.category}</span>
+                  <h3 className="font-bold text-slate-900 text-base leading-tight mb-1 group-hover:text-emerald-700 transition-colors">{svc.name}</h3>
+                  <p className="text-xs text-slate-500 line-clamp-2 mb-3 flex-1">{svc.description}</p>
                   
                   {/* Transparent Cooperative Pricing */}
-                  <div className={`${t.priceBg} border ${t.priceBorder} rounded-2xl p-3 mb-4`}>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className={`text-[10px] font-bold ${t.priceText} uppercase tracking-wider`}>Transparent Pricing</span>
-                      <span className={`font-extrabold ${t.priceVal} text-lg`}>₹{svc.price}</span>
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3 mb-3">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Transparent Pricing</span>
+                      <span className="font-extrabold text-slate-900 text-base">₹{svc.price}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className={`flex items-center gap-1 text-[10px] ${t.hint} font-semibold`}>
-                        <span className={`w-2 h-2 rounded-full ${t.dot}`}></span>
+                      <div className="flex items-center gap-1 text-[10px] text-emerald-700 font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                         ₹{workerShare} → Worker
                       </div>
-                      <div className={`flex items-center gap-1 text-[10px] ${t.hint} font-semibold`}>
-                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                        ₹{coopFund} → Co-op Fund
+                      <div className="flex items-center gap-1 text-[10px] text-slate-500 font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                        ₹{coopFund} → Co-op
                       </div>
                     </div>
-                    <div className={`w-full ${t.barBg} rounded-full h-1.5 mt-2 overflow-hidden`}>
-                      <div className={`${t.bar} h-full rounded-full`} style={{ width: '82%' }}></div>
+                    <div className="w-full bg-slate-200 rounded-full h-1 mt-2 overflow-hidden">
+                      <div className="bg-emerald-600 h-full rounded-full" style={{ width: '82%' }}></div>
                     </div>
-                    <div className={`text-[9px] ${t.hint} font-medium mt-1`}>82% goes directly to the worker — no middleman exploitation</div>
+                    <div className="text-[9px] text-slate-400 font-medium mt-1">82% goes directly to the worker — zero middleman markup</div>
                   </div>
 
                   <div className="flex items-center justify-between mt-auto">
-                    <div className="text-[10px] font-medium text-slate-500 flex items-center gap-1">
+                    <div className="text-[10px] font-medium text-slate-400 flex items-center gap-1">
                       <span>⏱️</span> {svc.duration_minutes} mins
                     </div>
                     {cart.find(c => c.id === svc.id) ? (
                       <MotionButton
                         onClick={() => handleRemoveFromCart(svc.id)}
-                        className="px-4 py-2 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 text-xs font-bold rounded-2xl transition shadow-sm"
+                        className="px-3.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 text-xs font-bold rounded-xl transition"
                       >
                         Remove
                       </MotionButton>
                     ) : (
                       <MotionButton
                         onClick={() => handleAddToCart(svc)}
-                        className={`px-4 py-2.5 ${t.btn} text-white text-xs font-bold rounded-2xl transition shadow-md flex items-center gap-1.5`}
+                        className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5"
                       >
                         <span>🤝</span> Book via Co-op
                       </MotionButton>
                     )}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )})}
           </div>
         </section>
+        </>
+        )}
 
-        {/* ── My Service Requests ────────────────────────────────── */}
-        <section id="requests" className="space-y-4 pt-4">
+
+        {/* ── Requests Tab View ────────────────────────────────── */}
+        {activeTab === 'requests' && (
+          <section id="requests" className="space-y-4 pt-4">
           <ScrollReveal>
             <div className="flex items-center justify-between">
               <div>
@@ -866,21 +749,15 @@ Thank you for choosing the Cooperative!
           </ScrollReveal>
 
           {requests.length === 0 ? (
-            <motion.div
-              className="bg-white p-10 text-center text-slate-500 border border-slate-200 rounded-2xl"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-            >
-              <motion.div
-                className="text-4xl mb-3"
-                animate={{ y: [0, -5, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                📋
-              </motion.div>
-              <p className="font-bold text-slate-800 text-sm">No service requests submitted yet</p>
-              <p className="text-xs text-slate-500 mt-1">Select a service above to request worker allocation.</p>
-            </motion.div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-8">
+              <EmptyState
+                icon="📋"
+                title="No service requests yet"
+                message="Browse our community services catalog to request a verified cooperative professional."
+                actionLabel="Explore Services"
+                onAction={() => setActiveTab('services')}
+              />
+            </div>
           ) : (
             <motion.div
               className="grid grid-cols-1 md:grid-cols-2 gap-5"
@@ -1045,7 +922,7 @@ Thank you for choosing the Cooperative!
                                 onClick={() => setPaymentBooking(booking)}
                                 className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-2xl transition flex items-center gap-1 shadow-sm"
                               >
-                                💳 Pay ₹${booking.amount}
+                                💳 Pay ₹{booking.amount}
                               </MotionButton>
                             )}
                             {paidBookings.includes(booking.id) && (
@@ -1104,6 +981,7 @@ Thank you for choosing the Cooperative!
             </motion.div>
           )}
         </section>
+        )}
       </main>
 
       {/* ── Checkout Modal ─────────────────────────────────────── */}
