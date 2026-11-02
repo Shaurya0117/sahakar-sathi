@@ -8,6 +8,7 @@ import AnimatedPage from '../components/AnimatedPage'
 import Modal from '../components/Modal'
 import ServiceTimeline from '../components/ServiceTimeline'
 import FloatingWhatsAppWidget from '../components/FloatingWhatsAppWidget'
+import VoiceBookingBot from '../components/VoiceBookingBot'
 import { PageSkeleton } from '../components/Skeleton'
 import {
   MotionCard,
@@ -1284,6 +1285,9 @@ Thank you for choosing the Cooperative!
 
       {/* ── Floating WhatsApp Widget ──────────────────────────────────── */}
       <FloatingWhatsAppWidget phoneNumber="919336751419" companyName="Sahakar Sathi Support" />
+
+      {/* Voice-Driven Booking Bot (Patent Feature: Zero-Screen-Touch SMS Dispatch) */}
+      <VoiceBookingBot onBookingCreated={() => { loadData(); toast.success("बुकिंग सफलतापूर्वक दर्ज की गई!"); }} />
     </AnimatedPage>
   )
 }

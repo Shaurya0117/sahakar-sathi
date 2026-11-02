@@ -139,3 +139,134 @@ export function fuzzyMatchIntent(transcript, targetPhrases, threshold = 2, requi
   
   return false
 }
+
+
+// ============================================================================
+// Patent Feature: Voice Booking Intent Extraction
+// Zero-Screen-Touch — customer speaks, bot extracts and dispatches.
+// ============================================================================
+
+/**
+ * Service keyword map.
+ * Keys must match backend service names / categories (case-insensitive).
+ */
+const SERVICE_MAP = {
+  electrician: [
+    'bijli', 'bijlee', 'बिजली', 'electric', 'electricity', 'wiring', 'wire',
+    'fan', 'switch', 'light', 'bulb', 'socket', 'mcb', 'fuse', 'current',
+    'bijali', 'light band', 'switch thik', 'wireman',
+  ],
+  plumber: [
+    'nal', 'nala', 'नल', 'pipe', 'paani', 'pani', 'पानी', 'leak', 'leakage',
+    'plumber', 'plumbing', 'tapkana', 'tap', 'sink', 'toilet', 'commode',
+    'bathroom pipe', 'geysir', 'geyser', 'pani nahi aa raha', 'naali',
+  ],
+  cleaner: [
+    'safai', 'सफाई', 'clean', 'cleaning', 'jhadoo', 'बर्तन', 'bartan',
+    'mop', 'sweep', 'ghar saaf', 'deep clean', 'bathroom clean', 'toilet clean',
+    'saaf karna', 'house clean', 'home clean',
+  ],
+  carpenter: [
+    'badhai', 'badhyee', 'बढ़ई', 'carpenter', 'carpentry', 'wood', 'lakdi',
+    'furniture', 'door', 'darwaza', 'almirah', 'table', 'chair', 'repair wood',
+    'darwaza thik', 'khidki', 'window',
+  ],
+  'ac repair': [
+    'ac', 'एसी', 'cooler', 'aircondition', 'air condition', 'aircon',
+    'ac thik', 'ac kharab', 'ac service', 'ac safai', 'ac gas', 'refrigerator',
+    'fridge', 'freeze', 'thanda nahi', 'cooling nahi',
+  ],
+  painter: [
+    'rang', 'रंग', 'paint', 'painting', 'colour', 'color', 'rangai', 'रंगाई',
+    'wall paint', 'ghar paint', 'painter', 'distemper', 'whitewash', 'colour karna',
+    'putal', 'lime',
+  ],
+  'pest control': [
+    'kide', 'कीड़े', 'pest', 'termite', 'cockroach', 'bug', 'insects',
+    'macchar', 'mosquito', 'chuha', 'rat', 'pest control', 'spray',
+    'dabbe maar', 'keetnashak',
+  ],
+  'home cleaning': [
+    'ghar saaf', 'poora ghar', 'full home', 'full house', 'complete cleaning',
+    'deep clean', 'move in', 'move out',
+  ],
+}
+
+/**
+ * Urgency keyword patterns (Hindi + English + Hinglish).
+ */
+const URGENCY_KEYWORDS = [
+  'jaldi', 'जल्दी', 'abhi', 'अभी', 'urgent', 'emergency', 'turant',
+  'तुरंत', 'abhi karo', 'right now', 'immediately', 'bahut jaldi',
+  'bahut zaruri', 'zaruri', 'kal subah tak', 'aaj hi',
+]
+
+/**
+ * Extracts a service booking intent from a voice transcript.
+ *
+ * @param {string} transcript - Raw text from Web Speech API (Hindi/Hinglish)
+ * @returns {{ service_type: string|null, urgency: 'URGENT'|'NORMAL', confidence: number }}
+ */
+export function extractBookingIntent(transcript) {
+  if (!transcript || transcript.trim().length === 0) {
+    return { service_type: null, urgency: 'NORMAL', confidence: 0 }
+  }
+
+  const raw = transcript.toLowerCase().trim()
+
+  // Detect urgency first
+  const urgency = URGENCY_KEYWORDS.some(kw => raw.includes(kw.toLowerCase()))
+    ? 'URGENT'
+    : 'NORMAL'
+
+  let bestService = null
+  let bestScore = 0
+
+  for (const [serviceName, keywords] of Object.entries(SERVICE_MAP)) {
+    let score = 0
+    let matchCount = 0
+
+    for (const kw of keywords) {
+      const kwLower = kw.toLowerCase()
+
+      // Direct inclusion check (Devanagari works too since includes() is Unicode-aware)
+      if (raw.includes(kwLower)) {
+        score += kwLower.length >= 5 ? 3 : 2  // longer keyword = stronger signal
+        matchCount++
+        continue
+      }
+
+      // Fuzzy phonetic match on individual words
+      const words = raw.split(/\s+/)
+      for (const word of words) {
+        const dist = levenshteinDistance(phoneticNormalize(word), phoneticNormalize(kwLower))
+        if (dist <= 1 && word.length > 2) {
+          score += 1
+          matchCount++
+          break
+        }
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score
+      bestService = serviceName
+    }
+  }
+
+  // Normalize confidence 0.0 – 1.0
+  const confidence = bestScore > 0
+    ? Math.min(bestScore / 6, 1.0)
+    : 0
+
+  // Capitalize service name to match DB format
+  const serviceTypeFormatted = bestService
+    ? bestService.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    : null
+
+  return {
+    service_type: confidence >= 0.3 ? serviceTypeFormatted : null,
+    urgency,
+    confidence: parseFloat(confidence.toFixed(2)),
+  }
+}

@@ -36,6 +36,13 @@ class Settings(BaseSettings):
     PROOF_NONCE_GRACE_DAYS: int = 2
     PROOF_CODE_MAX_TRIES: int = 5
 
+    # SMS Gateway Settings (Voice Booking Dispatch)
+    SMS_GATEWAY: str = "textbelt"   # "textbelt" | "android"
+    TEXTBELT_KEY: str = "textbelt"  # Use "textbelt" for free tier (1/day) or a paid key
+    ANDROID_GW_URL: str = ""        # Android SMS Gateway URL (production)
+    ANDROID_GW_USER: str = ""
+    ANDROID_GW_PASS: str = ""
+
     # Machine Learning Settings
     ML_ENABLED: bool = True
     ML_TIEBREAK_TOP_K: int = 3
