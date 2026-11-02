@@ -16,11 +16,12 @@ import logging
 from datetime import date, datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user, require_customer
+from app.auth.rate_limiter import check_rate_limit, get_client_ip
 from app.database.session import get_db
 from app.models.booking import Booking, BookingStatus
 from app.models.service import Service
@@ -195,6 +196,7 @@ def _dispatch_sms_to_worker(worker: Worker, service_name: str, customer_name: st
     summary="Create a voice-initiated booking and dispatch Hindi SMS to matched worker",
 )
 def create_voice_booking(
+    request: Request,
     payload: VoiceBookingRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_customer),
@@ -208,6 +210,7 @@ def create_voice_booking(
     4. Send Hindi SMS to top worker
     5. Return booking details + SMS status
     """
+    check_rate_limit(f"{get_client_ip(request)}:{current_user.id}", "voice_booking", max_requests=10, window_seconds=60)
     # 1. Match service
     service = _find_matching_service(db, payload.service_type)
     if not service:

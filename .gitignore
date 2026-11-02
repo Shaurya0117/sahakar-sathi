@@ -93,3 +93,7 @@ docs/claim_map.md
 # ML Datasets
 ml_data/
 backend/ml_data/
+
+# Database & Runtime ML State
+cooperative.db
+backend/app/ml/artifacts/bandit_state.json

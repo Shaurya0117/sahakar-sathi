@@ -232,7 +232,7 @@ def get_duration_estimate(
     }
 
 
-@ml_router.get(
+@ml_router.post(
     "/bandit/reset",
     summary="Reset Thompson Sampling bandit state (ADMIN only, for testing)",
 )

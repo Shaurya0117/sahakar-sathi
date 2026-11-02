@@ -4,6 +4,8 @@ Voice / IVR Webhook & Test Endpoints.
 POST /api/channels/voice/incoming — Voice Provider Webhook (Twilio / External IVR)
 POST /api/channels/voice/test-input — Development / Hackathon Demo Voice Simulation Endpoint
 """
+import hashlib
+import hmac
 import logging
 from typing import Any, Dict, Optional
 
@@ -11,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.services.channel_booking import handle_voice_input
 
@@ -33,15 +36,45 @@ async def voice_incoming_webhook(
     """
     Public webhook receiver for incoming phone calls and DTMF digit inputs from Twilio Voice.
     Returns TwiML XML response for Twilio or JSON structure for mock providers.
+    Verifies signature if configured; rejects outside dev if secret is not set.
     """
+    raw_body = await request.body()
     content_type = request.headers.get("content-type", "")
+
+    # Security verification
+    is_dev = settings.APP_ENV.lower() in ("development", "dev", "test", "testing")
+    twilio_secret = (settings.TWILIO_WEBHOOK_SECRET or "").strip()
+
+    if twilio_secret:
+        sig_header = (
+            request.headers.get("x-twilio-signature")
+            or request.headers.get("x-webhook-secret")
+            or ""
+        )
+        if not sig_header:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Missing Twilio webhook signature.",
+            )
+        expected_hmac = hmac.new(twilio_secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+        if not (hmac.compare_digest(sig_header, twilio_secret) or hmac.compare_digest(sig_header.lower(), expected_hmac.lower())):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Twilio webhook signature.",
+            )
+    elif not is_dev:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Twilio webhook secret not configured in production.",
+        )
 
     if "x-www-form-urlencoded" in content_type:
         form_data = await request.form()
         payload = dict(form_data)
     else:
         try:
-            payload = await request.json()
+            import json
+            payload = json.loads(raw_body.decode("utf-8")) if raw_body else {}
         except Exception:
             payload = {}
 
@@ -78,7 +111,15 @@ def voice_test_input(
     """
     Development & Hackathon Demo endpoint to simulate Voice IVR interactions.
     Uses the exact same conversation service as the real provider webhook.
+    Disabled outside development/test environments.
     """
+    is_dev = settings.APP_ENV.lower() in ("development", "dev", "test", "testing")
+    if not is_dev:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not found",
+        )
+
     result = handle_voice_input(
         db=db,
         raw_phone=payload.phone,

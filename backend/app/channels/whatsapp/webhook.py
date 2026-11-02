@@ -93,15 +93,43 @@ async def whatsapp_webhook(
     """
     raw_body = await request.body()
     content_type = request.headers.get("content-type", "")
+    is_dev = settings.APP_ENV.lower() in ("development", "dev", "test", "testing")
+    telnyx_secret = (settings.TELNYX_WEBHOOK_SECRET or "").strip()
+    twilio_secret = (settings.TWILIO_WEBHOOK_SECRET or "").strip()
 
-    # Provider security verification if provider is telnyx and secret is configured
-    if settings.WHATSAPP_PROVIDER.lower() == "telnyx" and settings.TELNYX_WEBHOOK_SECRET:
-        header_dict = {k.lower(): v for k, v in request.headers.items()}
-        if not verify_telnyx_signature(raw_body, header_dict):
+    # Provider security verification
+    if settings.WHATSAPP_PROVIDER.lower() == "telnyx":
+        if telnyx_secret:
+            header_dict = {k.lower(): v for k, v in request.headers.items()}
+            if not verify_telnyx_signature(raw_body, header_dict):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid Telnyx webhook signature.",
+                )
+        elif not is_dev:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid Telnyx webhook signature.",
+                detail="Telnyx webhook secret not configured in production.",
             )
+    elif settings.WHATSAPP_PROVIDER.lower() == "twilio":
+        if twilio_secret:
+            sig_header = request.headers.get("x-twilio-signature") or request.headers.get("x-webhook-secret") or ""
+            expected_hmac = hmac.new(twilio_secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
+            if not (hmac.compare_digest(sig_header, twilio_secret) or hmac.compare_digest(sig_header.lower(), expected_hmac.lower())):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid Twilio webhook signature.",
+                )
+        elif not is_dev:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Twilio webhook secret not configured in production.",
+            )
+    elif not is_dev:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="WhatsApp provider webhook requires authentication in production.",
+        )
 
     if "x-www-form-urlencoded" in content_type:
         form_data = await request.form()
@@ -146,7 +174,15 @@ def whatsapp_test_message(
     """
     Development & Hackathon Demo endpoint to simulate WhatsApp messages.
     Uses the exact same conversation service as the real provider webhook.
+    Disabled outside development/test environments.
     """
+    is_dev = settings.APP_ENV.lower() in ("development", "dev", "test", "testing")
+    if not is_dev:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Endpoint not found",
+        )
+
     result = handle_whatsapp_message(
         db=db,
         raw_phone=payload.phone,

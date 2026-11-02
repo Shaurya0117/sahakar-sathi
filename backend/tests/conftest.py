@@ -12,6 +12,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.auth.rate_limiter import reset_rate_limits
 from app.database.session import Base, get_db
 from app.main import app
 
@@ -38,9 +39,11 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture(autouse=True)
 def reset_database():
+    reset_rate_limits()
     Base.metadata.drop_all(bind=engine_test)
     Base.metadata.create_all(bind=engine_test)
     yield
+    reset_rate_limits()
     Base.metadata.drop_all(bind=engine_test)
 
 

@@ -11,7 +11,7 @@ Endpoints:
     GET  /api/auth/worker-test  — verify WORKER role enforcement
     GET  /api/auth/customer-test — verify CUSTOMER role enforcement
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
@@ -21,6 +21,7 @@ from app.auth.dependencies import (
     require_customer,
     require_worker,
 )
+from app.auth.rate_limiter import check_rate_limit, get_client_ip
 from app.database.session import get_db
 from app.models.user import User
 from app.schemas.auth import LoginResponse, RegisterResponse
@@ -67,6 +68,7 @@ def register(data: UserRegisterRequest, db: Session = Depends(get_db)):
     summary="Login and obtain JWT",
 )
 def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
@@ -76,6 +78,7 @@ def login(
     Returns a bearer JWT and safe user information.
     Uses OAuth2PasswordRequestForm so the /docs UI works out of the box.
     """
+    check_rate_limit(get_client_ip(request), "auth_login", max_requests=10, window_seconds=60)
     user = authenticate_user(db, email=form_data.username, password=form_data.password)
     if not user:
         raise HTTPException(

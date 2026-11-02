@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,11 +43,29 @@ class Settings(BaseSettings):
     ANDROID_GW_URL: str = ""        # Android SMS Gateway URL (production)
     ANDROID_GW_USER: str = ""
     ANDROID_GW_PASS: str = ""
+    SMS_WEBHOOK_SECRET: str = ""    # Secret token for Android SMS Gateway / external provider webhooks
 
     # Machine Learning Settings
     ML_ENABLED: bool = True
     ML_TIEBREAK_TOP_K: int = 3
     ML_TIEBREAK_MARGIN: float = 2.0
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.APP_ENV == "production":
+            dev_defaults = {
+                "change-me",
+                "dev-change-me-before-deploy",
+                "dev-secret-key-for-simulations",
+                "test-secret-key-for-ml-tests",
+                "secret",
+                "",
+            }
+            if not self.SECRET_KEY or self.SECRET_KEY.strip() in dev_defaults:
+                raise ValueError("In production, SECRET_KEY must be set to a secure, non-default value.")
+            if not self.PROOF_SECRET or self.PROOF_SECRET.strip() in dev_defaults:
+                raise ValueError("In production, PROOF_SECRET must be set to a secure, non-default value.")
+        return self
 
     model_config = SettingsConfigDict(
         env_file=".env",

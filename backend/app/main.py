@@ -46,8 +46,26 @@ app.add_middleware(
 )
 
 # ── Startup Events ────────────────────────────────────────────────────────────
+def check_production_secrets():
+    """Ensure sensitive secrets are non-default and non-empty in production."""
+    if settings.APP_ENV == "production":
+        dev_defaults = {
+            "change-me",
+            "dev-change-me-before-deploy",
+            "dev-secret-key-for-simulations",
+            "test-secret-key-for-ml-tests",
+            "secret",
+            "",
+        }
+        if not settings.SECRET_KEY or settings.SECRET_KEY.strip() in dev_defaults:
+            raise RuntimeError("Fatal: In production, SECRET_KEY must be set to a secure, non-default value.")
+        if not settings.PROOF_SECRET or settings.PROOF_SECRET.strip() in dev_defaults:
+            raise RuntimeError("Fatal: In production, PROOF_SECRET must be set to a secure, non-default value.")
+
+
 @app.on_event("startup")
 def startup_event():
+    check_production_secrets()
     if settings.PROOF_SECRET == "dev-change-me-before-deploy":
         logging.warning("WARNING: PROOF_SECRET is set to the default dev value 'dev-change-me-before-deploy'. Please change this in production.")
     try:
