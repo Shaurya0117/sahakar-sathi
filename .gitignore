@@ -79,8 +79,6 @@ fix_*.py
 patch_*.py
 *pytest_out*
 update_db.py
-update_conftest.py
-update_*.py
 backend/pytest_out.txt
 apply_*.py
 polish_*.py
