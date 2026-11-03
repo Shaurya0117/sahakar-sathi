@@ -48,28 +48,66 @@ def _context_key(trade: str, hour: int) -> str:
     return f"{trade_clean}_{_hour_bucket(hour)}"
 
 
+def _default_state() -> Dict[str, Any]:
+    """Default prior state: Beta(1, 1) for all arms across common trade/time contexts."""
+    trades = [
+        "electrician",
+        "plumber",
+        "carpenter",
+        "cleaning",
+        "painter",
+        "appliance_repair",
+        "general",
+    ]
+    buckets = ["morning", "afternoon", "evening", "night"]
+    defaults: Dict[str, Any] = {}
+    for t in trades:
+        for b in buckets:
+            defaults[f"{t}_{b}"] = {
+                "alpha": [1.0] * N_ARMS,
+                "beta": [1.0] * N_ARMS,
+            }
+    return defaults
+
+
 def _load_state() -> None:
-    global _bandit_state, _state_loaded
+    global _state_loaded
     if _state_loaded:
         return
     _state_loaded = True
     if not getattr(settings, "ML_ENABLED", True):
         return
-    try:
-        if BANDIT_STATE_PATH.is_file():
-            with open(BANDIT_STATE_PATH, "r", encoding="utf-8") as f:
-                _bandit_state = json.load(f)
-            logger.info("Loaded bandit state from %s (%d contexts)", BANDIT_STATE_PATH, len(_bandit_state))
-    except Exception as exc:
-        logger.warning("Failed to load bandit state: %s", exc)
-        _bandit_state = {}
+    loaded_data = None
+    if BANDIT_STATE_PATH.is_file():
+        try:
+            with open(BANDIT_STATE_PATH, "r", encoding="utf-8-sig") as f:
+                content = f.read().strip()
+                if content:
+                    parsed = json.loads(content)
+                    if isinstance(parsed, dict) and parsed:
+                        loaded_data = parsed
+        except Exception as exc:
+            logger.warning("Failed to read/parse bandit state from %s: %s", BANDIT_STATE_PATH, exc)
+            loaded_data = None
+
+    if loaded_data is None:
+        # File is missing, empty, or unreadable (including BOM/encoding errors).
+        # Restore with default Beta(1, 1) prior state and persist as UTF-8.
+        logger.info("Initializing bandit state with default Beta(1, 1) priors.")
+        _bandit_state.clear()
+        _bandit_state.update(_default_state())
+        _save_state()
+    else:
+        _bandit_state.clear()
+        _bandit_state.update(loaded_data)
+        logger.info("Loaded bandit state from %s (%d contexts)", BANDIT_STATE_PATH, len(_bandit_state))
 
 
 def _save_state() -> None:
     try:
         BANDIT_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(BANDIT_STATE_PATH, "w", encoding="utf-8") as f:
-            json.dump(_bandit_state, f, indent=2)
+            json.dump(_bandit_state, f, indent=2, ensure_ascii=False)
     except Exception as exc:
         logger.warning("Failed to save bandit state: %s", exc)
 
@@ -150,6 +188,6 @@ def get_bandit_stats() -> Dict[str, Any]:
 
 def reset_state() -> None:
     """Reset bandit state (for testing)."""
-    global _bandit_state, _state_loaded
-    _bandit_state = {}
+    global _state_loaded
+    _bandit_state.clear()
     _state_loaded = False

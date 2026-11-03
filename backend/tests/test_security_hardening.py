@@ -28,26 +28,27 @@ from app.services.auth import hash_password
 
 
 @pytest.fixture(autouse=True)
-def clean_rate_limits():
-    """Ensure rate limits are clean before and after each test."""
+def clean_rate_limits(monkeypatch):
+    """Ensure rate limits are clean before and after each test and mock external SMS."""
+    monkeypatch.setattr("app.routes.sms_reply.send_sms", lambda phone, msg: True)
     reset_rate_limits()
     yield
     reset_rate_limits()
 
 
-def setup_worker_with_booking(db: Session, phone: str = "+919876543210"):
+def setup_worker_with_booking(db: Session, phone: str = "+919876543210", suffix: str = ""):
     """Helper to create a coop, worker, customer, request, and ASSIGNED booking."""
-    coop = Cooperative(name="Security Test Coop", location="Noida")
+    coop = Cooperative(name=f"Security Test Coop{suffix}", location="Noida")
     db.add(coop)
     db.commit()
 
-    service = Service(name="Electrical Repair Test", category="Electrical", price=500.0, is_active=True)
+    service = Service(name=f"Electrical Repair Test{suffix}", category="Electrical", price=500.0, is_active=True)
     db.add(service)
     db.commit()
 
     w_user = User(
-        name="Security Worker",
-        email="sec.worker@test.com",
+        name=f"Security Worker{suffix}",
+        email=f"sec.worker{suffix}@test.com",
         phone=phone,
         password_hash=hash_password("Worker@1234"),
         role=UserRole.WORKER,
@@ -68,9 +69,9 @@ def setup_worker_with_booking(db: Session, phone: str = "+919876543210"):
     db.commit()
 
     c_user = User(
-        name="Security Customer",
-        email="sec.customer@test.com",
-        phone="+919876599999",
+        name=f"Security Customer{suffix}",
+        email=f"sec.customer{suffix}@test.com",
+        phone=f"+91987659{suffix.zfill(4)}" if suffix else "+919876599999",
         password_hash=hash_password("Customer@1234"),
         role=UserRole.CUSTOMER,
         is_active=True,
@@ -131,6 +132,7 @@ def test_sms_reply_with_wrong_secret_returns_401(client: TestClient, db: Session
     settings.SMS_WEBHOOK_SECRET = "super-secret-webhook-key"
 
     try:
+        # Wrong header secret
         res = client.post(
             "/api/sms/reply",
             headers={"X-Webhook-Secret": "wrong-secret"},
@@ -141,7 +143,23 @@ def test_sms_reply_with_wrong_secret_returns_401(client: TestClient, db: Session
         settings.SMS_WEBHOOK_SECRET = orig_secret
 
 
-def test_sms_reply_with_correct_secret_works(client: TestClient, db: Session):
+def test_sms_reply_with_wrong_query_secret_returns_401(client: TestClient, db: Session):
+    booking, worker, _ = setup_worker_with_booking(db)
+    orig_secret = settings.SMS_WEBHOOK_SECRET
+    settings.SMS_WEBHOOK_SECRET = "super-secret-webhook-key"
+
+    try:
+        # Wrong query parameter secret
+        res = client.post(
+            "/api/sms/reply?secret=wrong-query-secret",
+            json={"from_phone": "+919876543210", "message": "1"},
+        )
+        assert res.status_code == 401
+    finally:
+        settings.SMS_WEBHOOK_SECRET = orig_secret
+
+
+def test_sms_reply_with_correct_secret_header_works(client: TestClient, db: Session):
     booking, worker, _ = setup_worker_with_booking(db)
     orig_secret = settings.SMS_WEBHOOK_SECRET
     settings.SMS_WEBHOOK_SECRET = "super-secret-webhook-key"
@@ -150,6 +168,22 @@ def test_sms_reply_with_correct_secret_works(client: TestClient, db: Session):
         res = client.post(
             "/api/sms/reply",
             headers={"X-Webhook-Secret": "super-secret-webhook-key"},
+            json={"from_phone": "+919876543210", "message": "1"},
+        )
+        assert res.status_code == 200
+        assert res.json()["new_status"] == "ACCEPTED"
+    finally:
+        settings.SMS_WEBHOOK_SECRET = orig_secret
+
+
+def test_sms_reply_with_correct_query_param_works(client: TestClient, db: Session):
+    booking, worker, _ = setup_worker_with_booking(db)
+    orig_secret = settings.SMS_WEBHOOK_SECRET
+    settings.SMS_WEBHOOK_SECRET = "super-secret-webhook-key"
+
+    try:
+        res = client.post(
+            "/api/sms/reply?secret=super-secret-webhook-key",
             json={"from_phone": "+919876543210", "message": "1"},
         )
         assert res.status_code == 200
@@ -312,3 +346,94 @@ def test_rate_limit_login_returns_429(client: TestClient, db: Session):
     res_11 = client.post("/api/auth/login", data={"username": "ratelimit@test.com", "password": "Password@1234"})
     assert res_11.status_code == 429
     assert "Rate limit exceeded" in res_11.json().get("detail", "")
+
+
+def test_sms_reply_rate_limit_11_rapid_replies_from_one_phone_returns_429(client: TestClient, db: Session):
+    booking, worker, _ = setup_worker_with_booking(db)
+    orig_secret = settings.SMS_WEBHOOK_SECRET
+    settings.SMS_WEBHOOK_SECRET = "super-secret-webhook-key"
+
+    try:
+        # First 10 requests from this phone should succeed
+        for i in range(10):
+            booking.status = BookingStatus.ASSIGNED
+            db.commit()
+            res = client.post(
+                "/api/sms/reply",
+                headers={"X-Webhook-Secret": "super-secret-webhook-key"},
+                json={"from_phone": "+919876543210", "message": "1"},
+            )
+            assert res.status_code == 200
+
+        # 11th request from the same phone within 60s must return 429
+        res_11 = client.post(
+            "/api/sms/reply",
+            headers={"X-Webhook-Secret": "super-secret-webhook-key"},
+            json={"from_phone": "+919876543210", "message": "1"},
+        )
+        assert res_11.status_code == 429
+        assert "Rate limit exceeded" in res_11.json().get("detail", "")
+    finally:
+        settings.SMS_WEBHOOK_SECRET = orig_secret
+
+
+def test_sms_reply_different_phones_same_ip_not_blocked(client: TestClient, db: Session):
+    booking1, worker1, _ = setup_worker_with_booking(db, phone="+919876543210", suffix="1")
+    booking2, worker2, _ = setup_worker_with_booking(db, phone="+919876543211", suffix="2")
+    orig_secret = settings.SMS_WEBHOOK_SECRET
+    settings.SMS_WEBHOOK_SECRET = "super-secret-webhook-key"
+
+    try:
+        # Phone 1 makes 10 rapid replies
+        for i in range(10):
+            booking1.status = BookingStatus.ASSIGNED
+            db.commit()
+            res1 = client.post(
+                "/api/sms/reply",
+                headers={"X-Webhook-Secret": "super-secret-webhook-key"},
+                json={"from_phone": "+919876543210", "message": "1"},
+            )
+            assert res1.status_code == 200
+
+        # Phone 2 from the exact same client IP is NOT blocked
+        res2 = client.post(
+            "/api/sms/reply",
+            headers={"X-Webhook-Secret": "super-secret-webhook-key"},
+            json={"from_phone": "+919876543211", "message": "1"},
+        )
+        assert res2.status_code == 200
+        assert res2.json()["new_status"] == "ACCEPTED"
+    finally:
+        settings.SMS_WEBHOOK_SECRET = orig_secret
+
+
+# ── 6. Bandit State Persistence & Resilience on Fresh Clone ───────────────────
+
+def test_bandit_missing_file_creates_defaults(tmp_path, monkeypatch):
+    from app.ml import bandit
+    test_path = tmp_path / "artifacts" / "bandit_state.json"
+    monkeypatch.setattr(bandit, "BANDIT_STATE_PATH", test_path)
+    bandit.reset_state()
+    assert not test_path.exists()
+
+    bandit._load_state()
+    assert test_path.is_file()
+    assert "electrician_morning" in bandit._bandit_state
+    assert bandit._bandit_state["electrician_morning"]["alpha"] == [1.0, 1.0, 1.0]
+    assert bandit._bandit_state["electrician_morning"]["beta"] == [1.0, 1.0, 1.0]
+
+
+def test_bandit_corrupted_file_restores_defaults(tmp_path, monkeypatch):
+    from app.ml import bandit
+    test_dir = tmp_path / "artifacts"
+    test_dir.mkdir(parents=True, exist_ok=True)
+    test_path = test_dir / "bandit_state.json"
+    test_path.write_text("{ this is completely corrupted json !!!", encoding="utf-8")
+    monkeypatch.setattr(bandit, "BANDIT_STATE_PATH", test_path)
+    bandit.reset_state()
+
+    bandit._load_state()
+    assert test_path.is_file()
+    assert "plumber_afternoon" in bandit._bandit_state
+    assert bandit._bandit_state["plumber_afternoon"]["alpha"] == [1.0, 1.0, 1.0]
+    assert bandit._bandit_state["plumber_afternoon"]["beta"] == [1.0, 1.0, 1.0]

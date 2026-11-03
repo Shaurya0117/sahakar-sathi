@@ -15,7 +15,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -135,29 +135,42 @@ def sms_reply_webhook(
     request: Request,
     payload: SmsReplyWebhook,
     x_webhook_secret: Optional[str] = Header(None, alias="X-Webhook-Secret"),
+    secret: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
     """
     Android SMS Gateway POSTs here when a worker replies by SMS.
-    Protected by X-Webhook-Secret signature check, timestamp age validation,
-    and sliding-window rate limiting.
+    Protected by webhook secret check (header X-Webhook-Secret or ?secret= query parameter),
+    timestamp age validation, and two-tier rate limiting (10/min per phone, 120/min per gateway IP).
     """
-    # 1. Rate limiting: 10 requests per minute per IP / phone
+    # 1. Two-tier Rate limiting
+    # Loose IP backstop (120 req/min) so one Android Gateway IP can service multiple workers
     ip = get_client_ip(request)
-    check_rate_limit(f"{ip}:{payload.from_phone}", "sms_reply", max_requests=10, window_seconds=60)
+    check_rate_limit(f"ip:{ip}", "sms_reply_ip", max_requests=120, window_seconds=60)
+
+    # Primary limit: per from_phone (10 req/min, fallback to IP if missing)
+    phone_key = (payload.from_phone or "").strip() or ip
+    check_rate_limit(f"phone:{phone_key}", "sms_reply_phone", max_requests=10, window_seconds=60)
 
     # 2. Authenticate webhook secret using timing-safe comparison
-    secret = (getattr(settings, "SMS_WEBHOOK_SECRET", "") or "").strip()
-    if settings.APP_ENV == "production" and not secret:
+    # Support both custom header (X-Webhook-Secret) and query param (?secret=)
+    configured_secret = (getattr(settings, "SMS_WEBHOOK_SECRET", "") or "").strip()
+    if settings.APP_ENV == "production" and not configured_secret:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="SMS webhook rejected: secret not configured in production",
         )
 
-    if not secret or not x_webhook_secret or not hmac.compare_digest(x_webhook_secret.strip(), secret):
+    header_secret = (x_webhook_secret or "").strip()
+    query_secret = (secret or "").strip()
+
+    header_valid = bool(configured_secret and header_secret and hmac.compare_digest(header_secret, configured_secret))
+    query_valid = bool(configured_secret and query_secret and hmac.compare_digest(query_secret, configured_secret))
+
+    if not (header_valid or query_valid):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Unauthorized: invalid or missing X-Webhook-Secret",
+            detail="Unauthorized: invalid or missing webhook secret (provide X-Webhook-Secret header or ?secret= query parameter)",
         )
 
     # 3. Ignore replies older than 24 hours
