@@ -44,6 +44,8 @@ class Settings(BaseSettings):
     ANDROID_GW_USER: str = ""
     ANDROID_GW_PASS: str = ""
     SMS_WEBHOOK_SECRET: str = ""    # Secret token for Android SMS Gateway / external provider webhooks
+    SMS_REPLY_TIMEOUT_MINUTES: int = 10  # Auto-timeout for worker response before reassigning
+    MAX_DISPATCH_ATTEMPTS: int = 3       # Max sequential worker offers before unassigning
 
     # Machine Learning Settings
     ML_ENABLED: bool = True

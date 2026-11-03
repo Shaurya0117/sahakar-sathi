@@ -71,6 +71,8 @@ def _process_reply(booking: Booking, reply: str, db: Session) -> SmsReplyRespons
     """
     Core logic: parse reply "1"/"2" and update booking status accordingly.
     Sends Hindi confirmation SMS back to worker.
+    On decline ("2"), automatically reassigns to next best worker via equity/fatigue scorer.
+    On invalid reply, sends guidance Hindi SMS back to worker.
     """
     reply = reply.strip()
 
@@ -96,29 +98,55 @@ def _process_reply(booking: Booking, reply: str, db: Session) -> SmsReplyRespons
     elif reply == "2":
         # Worker DECLINED
         booking.status = BookingStatus.REJECTED
+        booking.notes = f"{booking.notes or ''} [DECLINED_BY_WORKER_{booking.worker_id}]"
         db.commit()
 
-        # Notify worker
+        # Notify declining worker
         worker = booking.worker
         if worker and worker.user and worker.user.phone:
-            msg = build_hindi_fallback_sms(booking.id)
+            msg = build_hindi_confirmation_sms(accepted=False, booking_id=booking.id)
             send_sms(worker.user.phone, msg)
 
-        logger.info("Booking #%s DECLINED by worker #%s — needs fallback", booking.id, booking.worker_id)
-        return SmsReplyResponse(
-            success=True,
-            booking_id=booking.id,
-            new_status="REJECTED",
-            message=f"Worker declined booking #{booking.id}. Use /api/voice-booking/fallback to reassign.",
+        logger.info("Booking #%s DECLINED by worker #%s — triggering auto-reassignment", booking.id, booking.worker_id)
+
+        # Automatic fallback: pick next worker using the SAME fatigue/equity-aware scorer
+        from app.routes.voice_booking import dispatch_to_next_worker
+        new_booking, next_worker, sms_sent, dispatch_msg = dispatch_to_next_worker(
+            db=db,
+            request_id=booking.request_id,
+            current_booking_id=booking.id,
+            reason="WORKER_DECLINED",
         )
+
+        if new_booking and next_worker:
+            logger.info("Auto-reassigned booking #%s to Worker #%s (new booking #%s)", booking.id, next_worker.id, new_booking.id)
+            return SmsReplyResponse(
+                success=True,
+                booking_id=new_booking.id,
+                new_status="REASSIGNED",
+                message=f"Worker declined booking #{booking.id}. Auto-reassigned to {next_worker.user.name if next_worker.user else 'Worker'} via equity scorer.",
+            )
+        else:
+            return SmsReplyResponse(
+                success=True,
+                booking_id=booking.id,
+                new_status=booking.status.value,
+                message=dispatch_msg or f"Worker declined booking #{booking.id}. No further eligible workers available.",
+            )
 
     else:
         logger.warning("Unknown SMS reply '%s' for booking #%s", reply, booking.id)
+        # Send short guidance SMS back to worker (Claim g)
+        worker = booking.worker
+        if worker and worker.user and worker.user.phone:
+            guidance = "कृपया 1 (स्वीकार) या 2 (मना) भेजें"
+            send_sms(worker.user.phone, guidance)
+
         return SmsReplyResponse(
             success=False,
             booking_id=booking.id,
             new_status=booking.status.value,
-            message=f"Unknown reply '{reply}'. Expected '1' (accept) or '2' (decline).",
+            message=f"Unknown reply '{reply}'. Sent guidance: कृपया 1 (स्वीकार) या 2 (मना) भेजें",
         )
 
 
@@ -234,7 +262,49 @@ def sms_reply_webhook(
         .order_by(Booking.created_at.desc())
         .first()
     )
+
+    clean_reply = payload.message.strip()
+
     if not booking:
+        # Check for idempotent duplicate reply (Claim g)
+        if clean_reply == "1":
+            recent_accepted = (
+                db.query(Booking)
+                .filter(
+                    Booking.worker_id == worker.id,
+                    Booking.status.in_([BookingStatus.ACCEPTED, BookingStatus.IN_PROGRESS]),
+                )
+                .order_by(Booking.created_at.desc())
+                .first()
+            )
+            if recent_accepted:
+                logger.info("Idempotent acceptance for already confirmed booking #%s", recent_accepted.id)
+                return SmsReplyResponse(
+                    success=True,
+                    booking_id=recent_accepted.id,
+                    new_status=recent_accepted.status.value,
+                    message="काम पहले ही स्वीकार कर लिया गया है (Already confirmed).",
+                )
+
+        if clean_reply == "2":
+            recent_declined = (
+                db.query(Booking)
+                .filter(
+                    Booking.worker_id == worker.id,
+                    Booking.status.in_([BookingStatus.REJECTED, BookingStatus.UNASSIGNED]),
+                )
+                .order_by(Booking.created_at.desc())
+                .first()
+            )
+            if recent_declined:
+                logger.info("Idempotent decline for already rejected booking #%s", recent_declined.id)
+                return SmsReplyResponse(
+                    success=True,
+                    booking_id=recent_declined.id,
+                    new_status="REJECTED",
+                    message="काम पहले ही मना कर दिया गया है (Already declined).",
+                )
+
         logger.info("Ignored: worker %s has no active (ASSIGNED) booking", worker.id)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

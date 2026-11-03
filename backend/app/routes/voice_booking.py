@@ -22,13 +22,26 @@ from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user, require_customer
 from app.auth.rate_limiter import check_rate_limit, get_client_ip
+from app.config import settings, MAX_FATIGUE_THRESHOLD
 from app.database.session import get_db
 from app.models.booking import Booking, BookingStatus
 from app.models.service import Service
 from app.models.service_request import ServiceRequest, RequestStatus
 from app.models.user import User
 from app.models.worker import AvailabilityStatus, VerificationStatus, Worker
+from app.services.matching.scorer import (
+    calculate_availability_score,
+    calculate_bio_economic_metrics,
+    calculate_experience_score,
+    calculate_location_score,
+    calculate_rating_score,
+    calculate_skill_score,
+    calculate_total_score,
+)
+from app.services.matching.equity_graph import calculate_equity_score
 from app.services.sms_service import (
+    build_hindi_confirmation_sms,
+    build_hindi_fallback_sms,
     build_hindi_job_sms,
     send_sms,
 )
@@ -82,16 +95,9 @@ class BookingStatusResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 def _score_worker(worker: Worker, lat: Optional[float], lon: Optional[float]) -> float:
-    """
-    Simple scoring: rating (0-5) + proximity bonus + recency penalty.
-    Higher = better.
-    """
-    score = worker.rating * 10  # 0–50
-
-    # Proximity bonus (if coordinates available)
+    score = worker.rating * 10
     if lat and lon and worker.latitude and worker.longitude:
         dist = ((lat - worker.latitude) ** 2 + (lon - worker.longitude) ** 2) ** 0.5
-        # Rough degree-to-km: 1 degree ≈ 111 km
         dist_km = dist * 111
         if dist_km < 2:
             score += 20
@@ -99,16 +105,238 @@ def _score_worker(worker: Worker, lat: Optional[float], lon: Optional[float]) ->
             score += 10
         elif dist_km < 10:
             score += 5
-
-    # Fewer active jobs = more available
     active = getattr(worker, "total_jobs", 0)
-    score -= min(active, 10)  # small penalty for very busy workers
-
-    # Peer consensus bonus
+    score -= min(active, 10)
     peer_score = getattr(worker, "peer_consensus_score", 0) or 0
     score += peer_score * 5
-
     return score
+
+
+def score_and_filter_voice_worker(
+    worker: Worker,
+    service: Service,
+    location: str,
+    lat: Optional[float],
+    lon: Optional[float],
+    db: Session,
+) -> Optional[float]:
+    """
+    Score worker using multi-factor bio-economic and equity engine.
+    Excludes workers with fatigue >= 80% (Claim c).
+    """
+    bio_metrics = calculate_bio_economic_metrics(worker, db)
+    fatigue_idx = bio_metrics.get("fatigue_index", 0.0)
+    if bio_metrics.get("is_fatigued") or fatigue_idx >= MAX_FATIGUE_THRESHOLD:
+        logger.info("Worker #%s excluded from voice dispatch: fatigue %.1f >= %.1f", worker.id, fatigue_idx, MAX_FATIGUE_THRESHOLD)
+        return None
+
+    equity_data = calculate_equity_score(db, worker)
+    if equity_data.get("is_fatigued"):
+        logger.info("Worker #%s excluded from voice dispatch: equity marked fatigued", worker.id)
+        return None
+
+    skill_score = calculate_skill_score(service, worker)
+    location_score = calculate_location_score(
+        location,
+        worker.location,
+        request_lat=lat,
+        request_lon=lon,
+        worker_lat=getattr(worker, "latitude", None),
+        worker_lon=getattr(worker, "longitude", None),
+    )
+    availability_score = calculate_availability_score(worker)
+    rating_score = calculate_rating_score(worker)
+    experience_score = calculate_experience_score(worker)
+
+    breakdown = {
+        "skill_match": skill_score,
+        "location": location_score,
+        "availability": availability_score,
+        "rating": rating_score,
+        "experience": experience_score,
+        "equity_score": equity_data.get("composite_equity_score", 50.0),
+        "workload_fairness": bio_metrics,
+    }
+    return calculate_total_score(breakdown)
+
+
+def select_best_voice_worker(
+    db: Session,
+    service: Service,
+    location: str,
+    lat: Optional[float] = None,
+    lon: Optional[float] = None,
+    exclude_worker_ids: Optional[list] = None,
+) -> Optional[Worker]:
+    """
+    Find and return highest-scoring eligible worker for a voice booking.
+    Excludes previously attempted workers and workers with fatigue >= 80%.
+    """
+    exclude_ids = set(exclude_worker_ids or [])
+    service_type = service.category or service.name
+    candidates = _find_available_workers(db, service_type, exclude_ids=list(exclude_ids))
+
+    scored_workers = []
+    for w in candidates:
+        if w.id in exclude_ids:
+            continue
+        score = score_and_filter_voice_worker(w, service, location, lat, lon, db)
+        if score is not None:
+            scored_workers.append((score, w))
+
+    if not scored_workers:
+        return None
+
+    scored_workers.sort(key=lambda item: (item[0], -item[1].id), reverse=True)
+    return scored_workers[0][1]
+
+
+def dispatch_to_next_worker(
+    db: Session,
+    request_id: int,
+    current_booking_id: int,
+    reason: str = "DECLINED",
+) -> tuple:
+    """
+    Auto re-dispatches voice booking to the next best worker.
+    - Excludes all previously attempted workers for this request.
+    - Uses same fatigue- and equity-aware scorer (fatigue >= 80% excluded).
+    - Enforces MAX_DISPATCH_ATTEMPTS: if reached, marks UNASSIGNED and notifies customer.
+    """
+    current_booking = db.query(Booking).filter(Booking.id == current_booking_id).first()
+    if not current_booking:
+        return None, None, False, "Original booking not found"
+
+    all_bookings = (
+        db.query(Booking)
+        .filter(Booking.request_id == request_id)
+        .order_by(Booking.created_at.asc())
+        .all()
+    )
+    attempt_count = len(all_bookings)
+    max_attempts = getattr(settings, "MAX_DISPATCH_ATTEMPTS", 3)
+
+    service_request = current_booking.service_request
+    service = service_request.service if service_request else None
+    customer = service_request.customer if service_request else None
+    customer_phone = customer.phone if customer else None
+
+    if attempt_count >= max_attempts:
+        current_booking.status = BookingStatus.UNASSIGNED
+        current_booking.notes = f"{current_booking.notes or ''} [MAX_ATTEMPTS_REACHED_{attempt_count}]"
+        if service_request:
+            service_request.status = RequestStatus.PENDING
+        db.commit()
+
+        if customer_phone:
+            notice = "क्षमा करें, कोई कारीगर उपलब्ध नहीं हो सका। कृपया बाद में प्रयास करें।"
+            send_sms(customer_phone, notice)
+
+        logger.info("Booking #%s reached MAX_DISPATCH_ATTEMPTS (%d/%d). Set to UNASSIGNED.", current_booking.id, attempt_count, max_attempts)
+        return None, None, False, f"Maximum dispatch attempts ({max_attempts}) reached. Booking marked UNASSIGNED."
+
+    excluded_ids = [b.worker_id for b in all_bookings]
+
+    next_worker = select_best_voice_worker(
+        db=db,
+        service=service,
+        location=service_request.location if service_request else "Customer Location",
+        lat=service_request.latitude if service_request else None,
+        lon=service_request.longitude if service_request else None,
+        exclude_worker_ids=excluded_ids,
+    )
+
+    if not next_worker:
+        current_booking.status = BookingStatus.UNASSIGNED
+        current_booking.notes = f"{current_booking.notes or ''} [NO_ELIGIBLE_WORKERS]"
+        if service_request:
+            service_request.status = RequestStatus.PENDING
+        db.commit()
+
+        if customer_phone:
+            notice = "क्षमा करें, कोई कारीगर उपलब्ध नहीं हो सका। कृपया बाद में प्रयास करें।"
+            send_sms(customer_phone, notice)
+
+        logger.info("No further eligible non-fatigued workers for request #%s. Marked UNASSIGNED.", request_id)
+        return None, None, False, "No further eligible workers available. Booking marked UNASSIGNED."
+
+    new_attempt_num = attempt_count + 1
+    new_booking = Booking(
+        request_id=request_id,
+        worker_id=next_worker.id,
+        assigned_by=current_booking.assigned_by,
+        status=BookingStatus.ASSIGNED,
+        amount=current_booking.amount,
+        scheduled_date=current_booking.scheduled_date,
+        scheduled_time=current_booking.scheduled_time,
+        notes=f"[VOICE BOOKING] Attempt {new_attempt_num}/{max_attempts} | Fallback from #{current_booking_id} ({reason})",
+    )
+    db.add(new_booking)
+    db.commit()
+    db.refresh(new_booking)
+
+    sms_sent, sms_message = _dispatch_sms_to_worker(
+        worker=next_worker,
+        service_name=service.name if service else "Service",
+        customer_name=customer.name if customer else "ग्राहक",
+        location=service_request.location if service_request else "Customer Location",
+        scheduled_date=new_booking.scheduled_date,
+        scheduled_time=new_booking.scheduled_time,
+        booking_id=new_booking.id,
+    )
+
+    logger.info("Auto-reassigned request #%s to Worker #%s (booking #%s, attempt %d/%d)", request_id, next_worker.id, new_booking.id, new_attempt_num, max_attempts)
+    return new_booking, next_worker, sms_sent, sms_message
+
+
+def process_voice_booking_timeouts(db: Session) -> list:
+    """
+    Check for voice bookings in ASSIGNED status where worker has not replied
+    within SMS_REPLY_TIMEOUT_MINUTES. Auto-expires offer and reassigns to next worker.
+    """
+    timeout_mins = getattr(settings, "SMS_REPLY_TIMEOUT_MINUTES", 10)
+    now = datetime.utcnow()
+
+    assigned_bookings = (
+        db.query(Booking)
+        .filter(Booking.status == BookingStatus.ASSIGNED)
+        .all()
+    )
+
+    results = []
+    for b in assigned_bookings:
+        if not (b.notes and "[VOICE BOOKING]" in b.notes):
+            continue
+
+        created_time = b.created_at if hasattr(b, "created_at") and b.created_at else None
+        if not created_time:
+            continue
+
+        elapsed_mins = (now - created_time).total_seconds() / 60.0
+        if elapsed_mins >= timeout_mins:
+            logger.info("Booking #%s timed out after %.1f mins (limit %d mins)", b.id, elapsed_mins, timeout_mins)
+            b.status = BookingStatus.REJECTED
+            b.notes = f"{b.notes or ''} [EXPIRED_TIMEOUT]"
+            db.commit()
+
+            if b.worker and b.worker.user and b.worker.user.phone:
+                msg = build_hindi_fallback_sms(b.id)
+                send_sms(b.worker.user.phone, msg)
+
+            new_b, next_w, sms_sent, msg = dispatch_to_next_worker(
+                db=db,
+                request_id=b.request_id,
+                current_booking_id=b.id,
+                reason="TIMEOUT",
+            )
+            results.append({
+                "expired_booking_id": b.id,
+                "reassigned_booking_id": new_b.id if new_b else None,
+                "next_worker_id": next_w.id if next_w else None,
+                "sms_sent": sms_sent,
+                "message": msg,
+            })
+    return results
 
 
 def _find_matching_service(db: Session, service_type: str) -> Optional[Service]:
@@ -183,7 +411,13 @@ def _dispatch_sms_to_worker(worker: Worker, service_name: str, customer_name: st
     )
 
     result = send_sms(phone, msg)
-    return result.get("success", False), msg
+    if isinstance(result, dict):
+        sent = result.get("success", False)
+    elif isinstance(result, bool):
+        sent = result
+    else:
+        sent = bool(result)
+    return sent, msg
 
 
 # ---------------------------------------------------------------------------
@@ -221,16 +455,19 @@ def create_voice_booking(
                    "Available: Electrician, Plumber, Cleaner, Carpenter, AC Repair, Painter."
         )
 
-    # 2. Find + rank workers
-    workers = _find_available_workers(db, payload.service_type)
-    if not workers:
+    # 2. Select best eligible worker using fatigue- and equity-aware scorer (excludes >= 80% fatigue)
+    best_worker = select_best_voice_worker(
+        db=db,
+        service=service,
+        location=payload.location,
+        lat=payload.latitude,
+        lon=payload.longitude,
+    )
+    if not best_worker:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="No available workers found at the moment. Please try again later.",
+            detail="No available non-fatigued workers found at the moment. Please try again later.",
         )
-
-    scored = sorted(workers, key=lambda w: _score_worker(w, payload.latitude, payload.longitude), reverse=True)
-    best_worker = scored[0]
 
     # 3. Get cooperative_id (use the worker's cooperative)
     cooperative_id = best_worker.cooperative_id
@@ -272,7 +509,7 @@ def create_voice_booking(
         amount=service.price,
         scheduled_date=scheduled_date,
         scheduled_time=scheduled_time,
-        notes=f"[VOICE BOOKING] {payload.urgency} | {payload.description}",
+        notes=f"[VOICE BOOKING] Attempt 1/{getattr(settings, 'MAX_DISPATCH_ATTEMPTS', 3)} | {payload.urgency} | {payload.description}",
     )
     db.add(booking)
     db.commit()
@@ -323,70 +560,40 @@ def fallback_voice_booking(
 ):
     """
     Called when worker declines (reply=2).
-    Picks next available worker and re-dispatches Hindi SMS.
+    Picks next available worker using the same fatigue/equity-aware scorer and re-dispatches Hindi SMS.
     """
-    # Get original booking
     booking = db.query(Booking).filter(Booking.id == payload.booking_id).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    # Verify customer owns this booking
     if booking.service_request.customer_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not your booking")
 
-    # Mark current as REJECTED
     booking.status = BookingStatus.REJECTED
+    booking.notes = f"{booking.notes or ''} [FALLBACK_REQUESTED: {payload.reason}]"
     db.commit()
 
-    # Find excluded workers (already tried)
-    excluded = [booking.worker_id]
-    service = booking.service_request.service
-    service_type = service.category if service else "general"
+    new_booking, next_worker, sms_sent, sms_message = dispatch_to_next_worker(
+        db=db,
+        request_id=booking.request_id,
+        current_booking_id=booking.id,
+        reason=payload.reason,
+    )
 
-    workers = _find_available_workers(db, service_type, exclude_ids=excluded)
-    if not workers:
+    if not new_booking or not next_worker:
         raise HTTPException(
-            status_code=503,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="सभी कारीगर व्यस्त हैं। कृपया कुछ देर बाद प्रयास करें।",
         )
 
-    # Score and pick next best
-    lat = booking.service_request.latitude
-    lon = booking.service_request.longitude
-    scored = sorted(workers, key=lambda w: _score_worker(w, lat, lon), reverse=True)
-    next_worker = scored[0]
-
-    # Create new booking for next worker
-    new_booking = Booking(
-        request_id=booking.request_id,
-        worker_id=next_worker.id,
-        assigned_by=current_user.id,
-        status=BookingStatus.ASSIGNED,
-        amount=booking.amount,
-        scheduled_date=booking.scheduled_date,
-        scheduled_time=booking.scheduled_time,
-        notes=f"[VOICE FALLBACK from #{booking.id}] {payload.reason}",
-    )
-    db.add(new_booking)
-    db.commit()
-    db.refresh(new_booking)
-
-    sms_sent, sms_message = _dispatch_sms_to_worker(
-        worker=next_worker,
-        service_name=service.name if service else service_type,
-        customer_name=current_user.name,
-        location=booking.service_request.location,
-        scheduled_date=new_booking.scheduled_date,
-        scheduled_time=new_booking.scheduled_time,
-        booking_id=new_booking.id,
-    )
-
     phone = next_worker.user.phone if next_worker.user else "0000"
+    service = booking.service_request.service
+    service_name = service.name if service else "Service"
     return VoiceBookingResponse(
         booking_id=new_booking.id,
         worker_name=next_worker.user.name if next_worker.user else "Worker",
         worker_phone_last4=phone[-4:] if phone else "****",
-        service_name=service.name if service else service_type,
+        service_name=service_name,
         sms_sent=sms_sent,
         sms_message=sms_message,
         scheduled_date=new_booking.scheduled_date,
@@ -408,7 +615,9 @@ def get_voice_booking_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Status polling endpoint — frontend polls this after SMS dispatch."""
+    """Status polling endpoint — frontend polls this after SMS dispatch. Auto-checks timeouts."""
+    process_voice_booking_timeouts(db)
+
     booking = db.query(Booking).filter(Booking.id == booking_id).first()
     if not booking:
         raise HTTPException(status_code=404, detail="Booking not found")
@@ -423,3 +632,14 @@ def get_voice_booking_status(
         service_name=service.name if service else "Service",
         sms_sent=True,
     )
+
+
+@voice_booking_router.post(
+    "/voice-booking/check-timeouts",
+    summary="Run timeout checks on pending voice bookings and auto-reassign expired offers",
+)
+def trigger_timeout_checks(
+    db: Session = Depends(get_db),
+):
+    results = process_voice_booking_timeouts(db)
+    return {"status": "ok", "processed_count": len(results), "results": results}

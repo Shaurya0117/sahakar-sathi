@@ -68,11 +68,13 @@ def build_hindi_job_sms(
     Keeps message under 160 chars (1 SMS unit) where possible.
     """
     hindi_service = _to_hindi_service(service_name)
+    cust_clean = (customer_name or "ग्राहक").strip()[:15]
+    loc_clean = (location or "").strip()[:25]
     msg = (
         f"नया काम! #{booking_id}\n"
         f"सेवा: {hindi_service}\n"
-        f"ग्राहक: {customer_name}\n"
-        f"पता: {location}\n"
+        f"ग्राहक: {cust_clean}\n"
+        f"पता: {loc_clean}\n"
         f"समय: {scheduled_date} {scheduled_time}\n"
         f"स्वीकार=1 | मना=2 भेजें"
     )
